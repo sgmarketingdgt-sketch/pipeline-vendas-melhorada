@@ -55,3 +55,4 @@ test-results/
 *.swo
 Thumbs.db
 .vercel
+.github/workflows/
