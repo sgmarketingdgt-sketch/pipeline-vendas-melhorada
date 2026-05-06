@@ -1,0 +1,93 @@
+{
+  "id": "gmb",
+  "nome": "Google Meu Negócio",
+  "nicho_alvo": "hamburgueria",
+  "descricao": "Posicionamento Acelerado no Google Maps — engenharia de palavras-chave para fazer o telefone tocar",
+  "ticket_inicial": 500,
+  "ticket_recorrencia": 250,
+  "estrategia_venda": "direta",
+
+  "icp": {
+    "resumo": "Pequeno empresário local (25-55 anos, Classe B/C) com negócio físico que depende de visibilidade geográfica. Sente a dor de não ser encontrado no Google quando alguém busca o serviço perto dele.",
+    "perfis_prioritarios": [
+      "Hamburguerias e restaurantes",
+      "Salões de beleza e barbearias",
+      "Clínicas de estética e odontológicas",
+      "Serviços de saúde e bem-estar",
+      "Comércio de bairro com atendimento presencial"
+    ],
+    "sinais_qualificacao": {
+      "prioridade_alta": [
+        "maps_nota < 4.2",
+        "maps_avaliacoes < 100",
+        "maps_recencia_dias > 60",
+        "wa_ativo = true",
+        "site ausente ou iFood/Instagram como site"
+      ],
+      "prioridade_media": [
+        "maps_nota entre 4.2 e 4.5",
+        "maps_avaliacoes entre 100 e 300",
+        "maps_recencia_dias entre 30 e 60"
+      ],
+      "descartar": [
+        "wa_ativo = false",
+        "maps_avaliacoes > 500 com nota > 4.7"
+      ]
+    }
+  },
+
+  "priority_score": {
+    "pesos": {
+      "wa_ativo_bonus": 15,
+      "maps_nota_baixa_bonus": 20,
+      "maps_avaliacoes_baixas_bonus": 15,
+      "maps_sem_site_bonus": 10,
+      "maps_recencia_alta_bonus": 10,
+      "dono_identificado_bonus": 10
+    },
+    "regras": [
+      {"campo": "maps_nota", "operador": "<", "valor": 4.0, "bonus": 20},
+      {"campo": "maps_nota", "operador": "<", "valor": 4.5, "bonus": 10},
+      {"campo": "maps_avaliacoes", "operador": "<", "valor": 50, "bonus": 15},
+      {"campo": "maps_avaliacoes", "operador": "<", "valor": 150, "bonus": 8},
+      {"campo": "maps_recencia_dias", "operador": ">", "valor": 90, "bonus": 10},
+      {"campo": "site_ausente", "bonus": 10}
+    ]
+  },
+
+  "rapport_humano": [
+    "Vi o perfil de vocês no Google Maps — com {maps_avaliacoes} avaliações, vocês ainda estão abaixo de concorrentes que aparecem antes mesmo tendo menos qualidade.",
+    "Quem busca 'hamburgueria perto de mim' no Google não está rolando feed — já está com o cartão na mão. Seu negócio aparece pra essas pessoas?",
+    "Enquanto tráfego pago para quando o dinheiro acaba, o Maps trabalha 24h por dia sem pagar por clique — é um ativo permanente do seu negócio."
+  ],
+
+  "gancho_dor": [
+    "Sem perfil otimizado no Google Maps, você é invisível pra quem já está procurando agora — e esse cliente vai pro concorrente.",
+    "3 em cada 4 buscas locais resultam em visita ou ligação. Cada mês sem GMB otimizado é dinheiro deixado na mesa.",
+    "Diferente de anúncio pago, o SEO Local constrói um ativo. É mais barato que um site e mais eficiente que Instagram pra quem quer clientes novos."
+  ],
+
+  "objecoes_e_respostas": {
+    "Quanto tempo demora?": "A otimização é entregue em até 7 dias. Primeiros resultados aparecem em 2-3 semanas.",
+    "Preciso pagar pro Google?": "Não. O perfil no Google Maps é gratuito — a gente otimiza o que já existe.",
+    "Tem garantia?": "Se em 30 dias você não receber novos orçamentos pelo Maps, devolvemos o investimento.",
+    "Preciso de site?": "Não. O Maps funciona sem site — é exatamente por isso que é mais barato e mais rápido.",
+    "Já tive experiência ruim com marketing": "Diferente de agência de social media, nosso foco é 100% Google Maps. Não tentamos fazer tudo."
+  },
+
+  "diferenciais_vs_concorrentes": [
+    "Entrega em 7 dias (agências grandes demoram 30 dias só no onboarding)",
+    "Especialista em Maps, não generalista de marketing",
+    "SEO Local = ativo permanente (tráfego pago para quando o dinheiro acaba)",
+    "Ticket 10x menor que agência tradicional com resultado equivalente"
+  ],
+
+  "sonhos_da_persona": [
+    "Agenda lotada sem depender de indicação",
+    "Telefone tocando com clientes novos todo dia",
+    "Ser referência no bairro e superar concorrentes maiores",
+    "Negócio que se vende sozinho pelo Google"
+  ],
+
+  "mensagem_wa_template": "Olá, {dono_primeiro_nome}! Vi o {nome} no Google Maps e percebi que dá pra aparecer bem mais pra quem busca por {segmento} aqui perto. Em 3 semanas consigo colocar vocês na frente de quem já está procurando — sem pagar por clique. Posso te mostrar como em 5 minutos?"
+}

@@ -1,0 +1,64 @@
+{
+  "id": "trafego_pago",
+  "nome": "Tráfego Pago",
+  "nicho_alvo": "hamburgueria",
+  "descricao": "Gestão de anúncios Meta Ads e Google Ads para negócios locais que ainda não aparecem no feed dos clientes",
+  "ticket_inicial": 800,
+  "ticket_recorrencia": 600,
+  "estrategia_venda": "direta",
+
+  "icp": {
+    "resumo": "Negócio local com presença nas redes (Instagram/Maps) mas sem investimento em anúncios pagos. Depende de delivery ou indicação. Sente a dor de não crescer apesar de ter um bom produto.",
+    "sinais_qualificacao": {
+      "prioridade_alta": [
+        "anuncia_meta = nao",
+        "wa_ativo = true",
+        "tem instagram",
+        "maps_avaliacoes > 50"
+      ],
+      "prioridade_media": [
+        "anuncia_meta = sim (upsell/troca de agência)",
+        "wa_ativo = true"
+      ],
+      "descartar": [
+        "wa_ativo = false",
+        "sem instagram e sem site"
+      ]
+    }
+  },
+
+  "priority_score": {
+    "pesos": {
+      "wa_ativo_bonus": 15,
+      "dono_identificado_bonus": 10,
+      "maps_sem_site_bonus": 8
+    },
+    "regras": [
+      {"campo": "anuncia_meta_nao", "bonus": 25},
+      {"campo": "tem_instagram", "bonus": 10},
+      {"campo": "maps_avaliacoes", "operador": ">", "valor": 50, "bonus": 10},
+      {"campo": "maps_avaliacoes", "operador": ">", "valor": 200, "bonus": 5}
+    ]
+  },
+
+  "rapport_humano": [
+    "Vi que o {nome} tem {maps_avaliacoes} avaliações no Maps e presença no Instagram — vocês já têm audiência, só falta aparecer pra quem ainda não conhece.",
+    "Hamburguerias que investem R$500/mês em tráfego pago conseguem de 3x a 5x mais pedidos diretos, sem pagar comissão de delivery.",
+    "Vi que vocês não estão rodando anúncios no Instagram ainda — isso significa que toda venda nova depende só de quem já te conhece ou te acha por acaso."
+  ],
+
+  "gancho_dor": [
+    "Sem anúncio pago, você aparece só pra quem já te conhece. Novos clientes no bairro nunca vão te ver.",
+    "O iFood aumenta a comissão todo ano. Quem tiver canal próprio via tráfego pago sobrevive — quem não tiver, paga mais pra plataforma.",
+    "Concorrentes que investem R$300/mês em Meta Ads dominam o feed local. Você não aparece nem pra quem mora na mesma rua."
+  ],
+
+  "objecoes_e_respostas": {
+    "Já tentei e não funcionou": "O problema quase sempre é segmentação errada, não o anúncio. Trabalhamos só com raio de 3km ao redor do seu negócio.",
+    "É caro": "R$500/mês em anúncio traz em média 40-80 pedidos novos. Um hambúrguer de R$40 = retorno de 4x no primeiro mês.",
+    "Não tenho tempo pra criar conteúdo": "Fazemos tudo — criativo, segmentação e gestão. Você só aprova.",
+    "Prefiro o iFood": "iFood leva 27-30% de comissão por pedido. Tráfego pago custa R$0,80 por clique. A conta não fecha pra quem depende só de delivery."
+  },
+
+  "mensagem_wa_template": "Olá, {dono_primeiro_nome}! Vi que o {nome} tem boa presença no Maps mas ainda não está rodando anúncios. Hamburguerias aqui em São Paulo que investem R$500/mês em Meta Ads conseguem de 3 a 5x mais pedidos diretos — sem pagar comissão pro iFood. Posso te mostrar como em 5 minutos?"
+}

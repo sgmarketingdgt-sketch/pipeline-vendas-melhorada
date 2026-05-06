@@ -1,0 +1,57 @@
+# =====================================================================
+# Invictus Prospect Template — .gitignore
+# =====================================================================
+
+# Segredos
+.env
+.env.*
+!.env.example
+
+# Dados privados de cada execução (nunca commitar leads de clientes)
+leads_final.json
+leads_*.csv
+prospects/
+lotes/
+lotes_v2/
+cnpj_encontrados.json
+cnpj_enriquecidos.json
+wa_validado.json
+anuncia_validado.json
+*_validado.json
+
+# HTML gerado (artefato do build)
+index.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Vercel
+.vercel/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+.vercel

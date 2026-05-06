@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prospeccao | __AGENCIA__</title>
+<meta name="description" content="CRM interno de prospeccao de leads - __AGENCIA__">
+<meta property="og:title" content="Prospeccao | __AGENCIA__">
+<meta property="og:description" content="CRM interno - __SEGMENTO__ __CIDADE__">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230A0A0A'/%3E%3Cpath d='M30 30h40v8H38v14h28v8H38v14h32v8H30z' fill='%233B82F6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script>
+  // Tailwind config
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          body: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          ink: { DEFAULT: '#F5F5F5', muted: '#A3A3A3', dim: '#737373', faded: '#525252' },
+          panel: { DEFAULT: '#141414', hover: '#1E1E1E', deep: '#0F0F0F' },
+          line: { DEFAULT: '#262626', hover: '#333333', bright: '#404040' },
+          accent: { DEFAULT: '#3B82F6', soft: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' },
+          status: {
+            novo: '#737373',
+            abordado: '#3B82F6',
+            respondeu: '#8B5CF6',
+            agendado: '#F59E0B',
+            ganhou: '#10B981',
+            perdeu: '#EF4444',
+          },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  /* Reset e base */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { background: #0A0A0A; color: #F5F5F5; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { min-height: 100vh; overflow-x: hidden; }
+
+  /* Tipografia especializada */
+  .font-display { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.015em; }
+  .font-ui { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 500; }
+  .font-body { font-family: Inter, system-ui, sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "zero" 1, "ss01" 1; }
+  .nums { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+  /* Scrollbar dark (WebKit) */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0A0A0A; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; border: 2px solid #0A0A0A; }
+  ::-webkit-scrollbar-thumb:hover { background: #404040; }
+  ::-webkit-scrollbar-corner { background: #0A0A0A; }
+  /* Firefox */
+  * { scrollbar-color: #262626 #0A0A0A; scrollbar-width: thin; }
+
+  /* Animacoes utilitarias */
+  @keyframes slide-in-right { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes scale-in { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .anim-slide-right { animation: slide-in-right 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .anim-fade { animation: fade-in 160ms ease-out; }
+  .anim-scale { animation: scale-in 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .anim-slide-up { animation: slide-up 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+  /* Sortable.js ghost / drag states */
+  .sortable-ghost { opacity: 0.35; background: rgba(59,130,246,0.08) !important; border: 1px dashed #3B82F6 !important; }
+  .sortable-chosen { cursor: grabbing; }
+  .sortable-drag { cursor: grabbing; transform: scale(1.02); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.8), 0 0 0 1px rgba(59,130,246,0.4); opacity: 0.98; }
+  .kanban-col[data-drop-active="true"] .kanban-col-body { background: rgba(59,130,246,0.04); border-color: rgba(59,130,246,0.5); }
+
+  /* Chip base */
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 12px; font-weight: 500; color: #A3A3A3; background: #141414; border: 1px solid #262626; border-radius: 999px; cursor: pointer; transition: all 140ms ease-out; user-select: none; }
+  .chip:hover { background: #1E1E1E; color: #F5F5F5; border-color: #333333; }
+  .chip.active { background: rgba(59,130,246,0.12); color: #3B82F6; border-color: rgba(59,130,246,0.35); }
+
+  /* Badge base (pra sinais do card) */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; border-radius: 5px; border: 1px solid; white-space: nowrap; }
+  .badge svg { width: 10px; height: 10px; }
+
+  /* Status color map (tambem usado em badges do dossie) */
+  .st-novo { color: #A3A3A3; background: rgba(115,115,115,0.12); border-color: rgba(115,115,115,0.3); }
+  .st-abordado { color: #3B82F6; background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); }
+  .st-respondeu { color: #A78BFA; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3); }
+  .st-agendado { color: #FBBF24; background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); }
+  .st-ganhou { color: #34D399; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); }
+  .st-perdeu { color: #F87171; background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); }
+  .st-sem-resposta { color: #FB923C; background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.3); }
+  .fu-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:3px 7px; border-radius:5px; border:1px solid; margin-top:4px; }
+  .fu-badge.ok { color:#34D399; background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); }
+  .fu-badge.due { color:#FBBF24; background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.3); }
+  .fu-badge.overdue { color:#F87171; background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); }
+  .fu-badge.done { color:#737373; background:rgba(115,115,115,0.1); border-color:rgba(115,115,115,0.3); }
+  .loss-reason { font-size:11px; color:#F87171; margin-top:3px; font-style:italic; }
+  .fu-step { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #1E1E1E; }
+  .fu-step:last-child { border-bottom:none; }
+  .fu-step-dot { width:20px; height:20px; border-radius:50%; border:2px solid; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; margin-top:2px; }
+  .fu-step-dot.done { background:#10B981; border-color:#10B981; color:white; }
+  .fu-step-dot.active { background:rgba(59,130,246,0.2); border-color:#3B82F6; color:#3B82F6; }
+  .fu-step-dot.pending { background:transparent; border-color:#404040; color:#737373; }
+  .fu-step-dot.overdue { background:rgba(239,68,68,0.15); border-color:#EF4444; color:#EF4444; }
+
+  /* Priority pill: gradient sutil do cinza (baixo) pro azul (alto) */
+  .prio-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 6px; border: 1px solid; }
+  .prio-lo { color: #737373; background: rgba(115,115,115,0.1); border-color: rgba(115,115,115,0.3); }
+  .prio-mid { color: #93C5FD; background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.25); }
+  .prio-hi { color: #3B82F6; background: rgba(59,130,246,0.14); border-color: rgba(59,130,246,0.4); font-weight: 800; }
+
+  /* Avatar iniciais (cor derivada de hash do nome) */
+  .avatar { width: 44px; height: 44px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #F5F5F5; flex-shrink: 0; letter-spacing: -0.02em; }
+
+  /* Kbd (atalhos) */
+  kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 5px; background: #1E1E1E; border: 1px solid #333333; border-bottom-width: 2px; border-radius: 4px; color: #A3A3A3; font-weight: 500; }
+
+  /* Card do kanban */
+  .lead-card { background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 12px 14px; cursor: grab; transition: all 150ms ease-out; position: relative; }
+  .lead-card:hover { background: #1E1E1E; border-color: #404040; }
+  .lead-card:active { cursor: grabbing; }
+  .lead-card.selected { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.04); }
+
+  /* Estado "ja no pipeline de ganhou" atenua um pouco */
+  .lead-card[data-status="ganhou"], .lead-card[data-status="perdeu"] { opacity: 0.72; }
+  .lead-card[data-status="ganhou"]:hover, .lead-card[data-status="perdeu"]:hover { opacity: 1; }
+  .lead-card[data-status="sem_resposta"] { opacity: 0.85; }
+
+  /* Dossier */
+  #dossier { transform: translateX(100%); transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+  #dossier.open { transform: translateX(0); }
+  #dossier-backdrop { opacity: 0; pointer-events: none; transition: opacity 180ms ease-out; }
+  #dossier-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+  /* Tabs do dossie */
+  .tab-btn { padding: 10px 0; margin-right: 24px; font-weight: 600; font-size: 13px; color: #737373; border-bottom: 2px solid transparent; cursor: pointer; transition: color 140ms, border-color 140ms; background: transparent; border-left: 0; border-right: 0; border-top: 0; }
+  .tab-btn:hover { color: #A3A3A3; }
+  .tab-btn.active { color: #F5F5F5; border-bottom-color: #3B82F6; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fade-in 160ms ease-out; }
+
+  /* Info row no dossie (label + valor) */
+  .info-row { display: grid; grid-template-columns: 140px 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid #1E1E1E; font-size: 13px; align-items: start; }
+  .info-row:last-child { border-bottom: 0; }
+  .info-k { color: #737373; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 2px; }
+  .info-v { color: #F5F5F5; line-height: 1.55; font-family: Inter, sans-serif; }
+  .info-v.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .info-v.muted { color: #A3A3A3; }
+
+  /* Pill de acao no dossie header */
+  .action-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; font-size: 12px; font-weight: 600; background: #1E1E1E; border: 1px solid #333333; border-radius: 8px; color: #F5F5F5; transition: all 140ms; cursor: pointer; text-decoration: none; }
+  .action-pill:hover { background: #262626; border-color: #404040; }
+  .action-pill.wa { background: #128C7E; border-color: #128C7E; color: white; }
+  .action-pill.wa:hover { background: #0f7a6b; }
+  .action-pill[disabled], .action-pill.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+  /* Status select no dossie */
+  .status-select { background: #141414; border: 1px solid #262626; color: #F5F5F5; font-size: 12px; font-weight: 600; padding: 8px 28px 8px 12px; border-radius: 8px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A3A3A3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+
+  /* Timeline */
+  .timeline-item { position: relative; padding-left: 22px; padding-bottom: 14px; }
+  .timeline-item::before { content: ''; position: absolute; left: 4px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: #3B82F6; border: 2px solid #0A0A0A; z-index: 1; }
+  .timeline-item::after { content: ''; position: absolute; left: 7px; top: 12px; bottom: -2px; width: 2px; background: #262626; }
+  .timeline-item:last-child::after { display: none; }
+
+  /* Hides */
+  .hidden-force { display: none !important; }
+
+  /* Command palette */
+  #palette-backdrop { opacity: 0; pointer-events: none; transition: opacity 180ms; }
+  #palette-backdrop.visible { opacity: 1; pointer-events: auto; }
+  #palette { opacity: 0; transform: translate(-50%, calc(-50% - 12px)) scale(0.97); pointer-events: none; transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+  #palette.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+  .palette-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; font-size: 13px; color: #E5E5E5; border-radius: 8px; transition: background 100ms; }
+  .palette-item:hover, .palette-item.active { background: #1E1E1E; }
+  .palette-item .meta { margin-left: auto; font-size: 11px; color: #525252; }
+  .palette-item .sub { color: #737373; font-size: 11px; margin-top: 2px; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #141414; border: 1px solid #333333; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #F5F5F5; z-index: 200; transform: translateY(100px); opacity: 0; transition: all 240ms cubic-bezier(0.22, 1, 0.36, 1); pointer-events: none; display: flex; align-items: center; gap: 10px; }
+  #toast.visible { transform: translateY(0); opacity: 1; }
+
+  /* Theme light (toggle bonus) */
+  body.light { background: #FAFAFA; color: #0A0A0A; }
+  body.light .lead-card { background: #FFFFFF; border-color: #E5E5E5; }
+  body.light .lead-card:hover { background: #F5F5F5; border-color: #D4D4D4; }
+  body.light .chip { background: #FFFFFF; border-color: #E5E5E5; color: #525252; }
+  body.light .chip:hover { background: #F5F5F5; color: #0A0A0A; }
+  body.light ::-webkit-scrollbar-track { background: #FAFAFA; }
+  body.light ::-webkit-scrollbar-thumb { background: #D4D4D4; border-color: #FAFAFA; }
+
+  /* Mobile: kanban vira acordeao vertical */
+  @media (max-width: 1023px) {
+    #kanban { flex-direction: column; overflow-x: hidden; height: auto; }
+    .kanban-col { width: 100%; max-width: 100%; min-height: auto; }
+    .kanban-col-body { max-height: none; }
+    #dossier { width: 100vw !important; }
+    .info-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+
+  /* Drag handle indicador no card */
+  .drag-dots { display: inline-flex; flex-direction: column; gap: 2px; opacity: 0; transition: opacity 140ms; position: absolute; top: 14px; right: 10px; }
+  .drag-dots span { width: 3px; height: 3px; border-radius: 50%; background: #525252; }
+  .lead-card:hover .drag-dots { opacity: 0.6; }
+
+  /* Badge "Novo" para leads recém-extraídos no modo incremental */
+  .badge-novo { position: absolute; top: -6px; left: -6px; background: #EF4444; color: white; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(239,68,68,0.4); text-transform: uppercase; line-height: 1; z-index: 2; }
+</style>
+</head>
+<body class="bg-[#0A0A0A] text-ink font-body">
+
+<!-- TOPBAR FIXA -->
+<header class="fixed top-0 left-0 right-0 h-16 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-line z-40">
+  <div class="h-full px-5 flex items-center gap-5">
+    <!-- Logo Agencia -->
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+        <span class="font-display text-white text-sm">__AGENCIA_INICIAL__</span>
+      </div>
+      <div class="hidden md:flex items-baseline gap-2">
+        <span class="font-display text-[15px] tracking-tight">__AGENCIA__</span>
+        <span class="text-ink-dim text-[13px] font-ui">Prospeccao</span>
+      </div>
+    </div>
+    <!-- Breadcrumb -->
+    <div class="hidden md:flex items-center gap-2 text-[13px] text-ink-muted">
+      <svg class="w-3.5 h-3.5 text-ink-faded" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="text-ink">Prospecção Ativa</span>
+    </div>
+    <!-- Stats inline -->
+    <div class="hidden lg:flex items-center gap-5 ml-2 text-[12px]" id="header-stats">
+      <!-- populado via JS -->
+    </div>
+    <!-- Search (abre palette) -->
+    <button id="btn-search" class="ml-auto flex items-center gap-2 px-3 py-2 bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-[13px] text-ink-muted transition-colors min-w-[200px] max-w-[280px]">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <span class="flex-1 text-left">Buscar lead ou acao</span>
+      <span class="flex items-center gap-1"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+    </button>
+    <!-- Acoes -->
+    <button id="btn-export" title="Exportar CSV" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button id="btn-reset" title="Resetar pipeline" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+    <button id="btn-execucoes" title="Histórico de execuções" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors hidden">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+    <button id="btn-theme" title="Tema" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div id="sync-indicator" title="Status do sync com a nuvem" class="hidden flex items-center gap-1.5 px-2.5 h-9 bg-panel border border-line rounded-lg">
+      <span id="sync-dot" class="w-2 h-2 rounded-full bg-ink-faded transition-colors"></span>
+      <span id="sync-label" class="text-[11px] text-ink-muted font-ui">Local</span>
+    </div>
+  </div>
+</header>
+
+<!-- FILTER BAR STICKY -->
+<nav class="fixed top-16 left-0 right-0 h-12 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-line z-30 overflow-x-auto">
+  <div class="h-full px-5 flex items-center gap-2 whitespace-nowrap">
+    <span class="text-[11px] font-semibold uppercase tracking-widest text-ink-faded mr-1">Filtros</span>
+    <button class="chip" data-filter="naoContactados" id="chip-nao-contactados" style="display:none">Apenas não contactados</button>
+    <button class="chip" data-filter="novosNestaRodada" id="chip-novos" style="display:none">Novos nesta rodada</button>
+    <button class="chip" data-filter="ig">Com Instagram</button>
+    <button class="chip" data-filter="wa">WhatsApp real</button>
+    <button class="chip" data-filter="dono">Com dono</button>
+    <button class="chip" data-filter="cnpj">CNPJ oficial</button>
+    <button class="chip" data-filter="meta">Anuncia Meta</button>
+    <button class="chip" data-filter="email">✉️ Com e-mail</button>
+    <button class="chip" data-filter="followupHoje">📅 Follow-up hoje</button>
+    <button class="chip" data-filter="prio">Priority 70+</button>
+    <div class="h-5 w-px bg-line mx-2"></div>
+    <button class="chip" data-filter="gmb_alta">📍 GMB Alta</button>
+    <button class="chip" data-filter="tp_alta">📣 Tráfego Alta</button>
+    <div class="h-5 w-px bg-line mx-2"></div>
+    <select id="filter-nicho" class="chip" style="padding: 6px 11px;">
+      <option value="">Todos os nichos</option>
+    </select>
+    <select id="filter-cidade" class="chip" style="padding: 6px 11px;">
+      <option value="">Todas as cidades</option>
+    </select>
+    <div class="h-5 w-px bg-line mx-2"></div>
+    <button id="btn-clear-filters" class="text-[11px] text-ink-dim hover:text-ink-muted transition-colors">Limpar</button>
+    <span id="counter" class="ml-auto text-[12px] text-ink-muted font-medium nums pr-2">50 leads</span>
+  </div>
+</nav>
+
+<!-- KANBAN PRINCIPAL -->
+<main id="kanban" class="pt-28 pb-8 px-5 flex gap-4 overflow-x-auto min-h-screen">
+  <!-- Colunas renderizadas via JS -->
+</main>
+
+<!-- DOSSIE BACKDROP -->
+<div id="dossier-backdrop" class="fixed inset-0 bg-black/40 z-40"></div>
+
+<!-- DOSSIE SLIDE-IN -->
+<aside id="dossier" class="fixed top-0 right-0 bottom-0 w-[640px] max-w-[50vw] bg-panel-deep border-l border-line z-50 flex flex-col shadow-2xl" style="display: none;">
+  <!-- Header fixo -->
+  <div id="dossier-head" class="flex-shrink-0 p-6 border-b border-line">
+    <!-- populado via JS -->
+  </div>
+  <!-- Tabs -->
+  <div class="flex-shrink-0 px-6 border-b border-line flex items-center">
+    <button class="tab-btn active" data-tab="geral">Visao Geral</button>
+    <button class="tab-btn" data-tab="rapport">Rapport Humano</button>
+    <button class="tab-btn" data-tab="dor">Ganchos de Dor</button>
+    <button class="tab-btn" data-tab="atividade">Atividade</button>
+    <button class="tab-btn" data-tab="followup">Follow-up</button>
+  </div>
+  <!-- Conteudo scroll -->
+  <div id="dossier-body" class="flex-1 overflow-y-auto p-6">
+    <!-- 4 tab-panels renderizados via JS -->
+  </div>
+</aside>
+
+<!-- COMMAND PALETTE BACKDROP -->
+<div id="palette-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"></div>
+
+<!-- COMMAND PALETTE -->
+<div id="palette" class="fixed top-1/2 left-1/2 w-[640px] max-w-[92vw] bg-panel-deep border border-line rounded-xl shadow-2xl z-[70] overflow-hidden" style="display: none;">
+  <div class="flex items-center gap-3 px-5 py-4 border-b border-line">
+    <svg class="w-4 h-4 text-ink-dim flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="palette-input" type="text" placeholder="Busque por nome, dono, bairro, acao..." autocomplete="off" class="flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-faded font-body outline-none">
+    <kbd>ESC</kbd>
+  </div>
+  <div id="palette-list" class="max-h-[420px] overflow-y-auto p-2">
+    <!-- populado via JS -->
+  </div>
+</div>
+
+<!-- MODAL DE CONFIRMACAO (reset) -->
+<div id="confirm-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden-force">
+  <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[92vw] bg-panel-deep border border-line rounded-xl p-6 anim-scale">
+    <h3 class="font-display text-[18px] mb-2">Resetar pipeline?</h3>
+    <p class="text-[13px] text-ink-muted leading-relaxed">Isso vai apagar todo o status de cada lead, suas notas e historico de atividade. A base dos 50 leads continua intacta.</p>
+    <div class="flex items-center gap-2 mt-5 justify-end">
+      <button id="confirm-cancel" class="action-pill">Cancelar</button>
+      <button id="confirm-ok" class="action-pill" style="background: #EF4444; border-color: #EF4444; color: white;">Resetar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite">
+  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<!-- DADOS EMBED (placeholders substituidos pelo build_html_v2.py) -->
+<script>
+  const LEADS = __LEADS_DATA__;
+  const CRM_CONFIG = {
+    supabaseUrl: '__SUPABASE_URL__',
+    supabaseAnonKey: '__SUPABASE_ANON_KEY__',
+    agencia: '__AGENCIA__',
+    segmento: '__SEGMENTO__',
+  };
+</script>
+
+<!-- MODAL DE EXECUCOES -->
+<div id="execs-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden-force"></div>
+<div id="execs-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] max-w-[92vw] max-h-[80vh] bg-panel-deep border border-line rounded-xl z-[85] flex flex-col hidden-force anim-scale">
+  <div class="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-line">
+    <h3 class="font-display text-[16px]">Histórico de execuções</h3>
+    <button id="execs-close" class="text-ink-dim hover:text-ink p-1">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div id="execs-body" class="flex-1 overflow-y-auto p-6 text-[13px] text-ink-muted">
+    Carregando...
+  </div>
+</div>
+
+<!-- SORTABLE.JS (drag-drop kanban) -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<!-- APP JS -->
+<script>
+(function() {
+  'use strict';
+
+  // ==========================================================================
+  // CLOUD SYNC (Supabase) - opcional
+  // Quando SUPABASE_URL e SUPABASE_ANON_KEY estao configurados, o CRM
+  // sincroniza estado (status/notes/activity) com a nuvem em tempo real.
+  // Sem config valida, opera 100% local via localStorage (default).
+  // ==========================================================================
+  const CLOUD_MODE = (
+    typeof CRM_CONFIG !== 'undefined'
+    && CRM_CONFIG.supabaseUrl
+    && CRM_CONFIG.supabaseUrl.startsWith('http')
+    && CRM_CONFIG.supabaseAnonKey
+    && CRM_CONFIG.supabaseAnonKey.length > 20
+    && CRM_CONFIG.agencia
+  );
+  let supabaseClient = null;
+  if (CLOUD_MODE && typeof supabase !== 'undefined' && supabase.createClient) {
+    supabaseClient = supabase.createClient(CRM_CONFIG.supabaseUrl, CRM_CONFIG.supabaseAnonKey, {
+      auth: { persistSession: false },
+    });
+  }
+
+  // Mapeamento external_id (id local 1..N) -> uuid do Supabase, populado no load.
+  const supabaseIdMap = {};
+  let pendingWrites = 0;
+  function setSyncStatus(label, color) {
+    const dot = document.getElementById('sync-dot');
+    const lbl = document.getElementById('sync-label');
+    if (dot) dot.style.background = color;
+    if (lbl) lbl.textContent = label;
+  }
+  function bumpPending(delta) {
+    pendingWrites = Math.max(0, pendingWrites + delta);
+    if (!CLOUD_MODE || !supabaseClient) return;
+    if (pendingWrites > 0) setSyncStatus('Salvando...', '#F59E0B');
+    else setSyncStatus('Sincronizado', '#10B981');
+  }
+
+  async function cloudFetchLeads() {
+    if (!CLOUD_MODE || !supabaseClient) return null;
+    setSyncStatus('Carregando...', '#F59E0B');
+    try {
+      const { data, error } = await supabaseClient
+        .from('leads')
+        .select('*')
+        .eq('agencia', CRM_CONFIG.agencia);
+      if (error) throw error;
+      setSyncStatus('Sincronizado', '#10B981');
+      return data || [];
+    } catch (e) {
+      console.error('[cloud] fetch leads falhou', e);
+      setSyncStatus('Offline', '#EF4444');
+      return null;
+    }
+  }
+
+  async function cloudUpsertLead(leadId) {
+    if (!CLOUD_MODE || !supabaseClient) return;
+    const supabaseId = supabaseIdMap[leadId];
+    if (!supabaseId) return;
+    const ls = state.leads[leadId];
+    if (!ls) return;
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    const stillNovoFlag = !!(lead && lead.novo_nesta_rodada && ls.status === 'novo');
+    bumpPending(1);
+    try {
+      await supabaseClient
+        .from('leads')
+        .update({
+          status: ls.status,
+          notes: ls.notes || [],
+          activity: ls.activity || [],
+          novo_nesta_rodada: stillNovoFlag,
+        })
+        .eq('id', supabaseId);
+    } catch (e) {
+      console.error('[cloud] upsert falhou', e);
+      setSyncStatus('Erro ao salvar', '#EF4444');
+    } finally {
+      bumpPending(-1);
+    }
+  }
+
+  async function cloudFetchExecucoes() {
+    if (!CLOUD_MODE || !supabaseClient) return [];
+    try {
+      const { data, error } = await supabaseClient
+        .from('execucoes')
+        .select('*')
+        .eq('agencia', CRM_CONFIG.agencia)
+        .order('data_execucao', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error('[cloud] fetch execucoes falhou', e);
+      return [];
+    }
+  }
+
+  // ==========================================================================
+  // CONFIGURACAO - Adapte aqui pra usar o template em outros segmentos/cidades
+  // ==========================================================================
+  const LS_KEY = 'ethos_crm_bh_2026_04_22';
+  const STATUSES = [
+    { id: 'novo',       label: 'Novo',       color: '#737373' },
+    { id: 'abordado',   label: 'Abordado',   color: '#3B82F6' },
+    { id: 'respondeu',  label: 'Respondeu',  color: '#8B5CF6' },
+    { id: 'agendado',   label: 'Agendado',   color: '#F59E0B' },
+    { id: 'sem_resposta', label: 'Sem resposta', color: '#FB923C' },
+    { id: 'ganhou',     label: 'Ganhou',     color: '#10B981' },
+    { id: 'perdeu',     label: 'Perdeu',     color: '#EF4444' },
+  ];
+
+  // Cores pseudo-randomicas pra avatar (via hash do nome)
+  const AVATAR_PALETTE = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#14B8A6', '#F43F5E', '#06B6D4', '#6366F1', '#84CC16'];
+
+  // ==========================================================================
+  // ESTADO - pipeline + notas persiste em localStorage
+  // ==========================================================================
+  let state = loadState();
+  let filters = {
+    naoContactados: CLOUD_MODE,   // ativo por padrão em modo cloud
+    novosNestaRodada: false,
+    ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, prio: false, cidade: '', nicho: '',
+    gmb_alta: false, tp_alta: false
+  };
+  let searchTerm = '';
+  let selectedLeadId = null;
+  let activeTab = 'geral';
+  let paletteIndex = 0;
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return initialState();
+      const parsed = JSON.parse(raw);
+      if (!parsed.leads) return initialState();
+      // Inicializa leads novos que ainda não estão no estado salvo (ex: novo nicho adicionado)
+      LEADS.leads.forEach(l => {
+        if (!parsed.leads[l.id]) {
+          parsed.leads[l.id] = { status: 'novo', notes: [], activity: [] };
+        }
+      });
+      return parsed;
+    } catch (e) { return initialState(); }
+  }
+  function initialState() {
+    const leads = {};
+    LEADS.leads.forEach(l => { leads[l.id] = { status: 'novo', notes: [], activity: [] }; });
+    return { leads, theme: 'dark' };
+  }
+  function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+  // ==========================================================================
+  // HELPERS
+  // ==========================================================================
+  function hashCode(str) {
+    let h = 0; for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i);
+    return Math.abs(h);
+  }
+  function avatarColor(name) { return AVATAR_PALETTE[hashCode(name || '') % AVATAR_PALETTE.length]; }
+  function initials(name) {
+    if (!name) return '?';
+    const parts = name.replace(/[^\wÀ-ÿ\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  }
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+  function prioClass(p) { if (p >= 80) return 'prio-hi'; if (p >= 50) return 'prio-mid'; return 'prio-lo'; }
+  function simple(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function fmtMoney(v) { if (v == null || v === '') return '—'; return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+  function fmtDate(iso) { if (!iso) return '—'; try { const d = new Date(iso); return d.toLocaleDateString('pt-BR'); } catch { return iso; } }
+  function fmtCnpj(c) { return c || '—'; }
+  function fmtPhone(p) { return p || '—'; }
+  function fmtNow() { return new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+
+  // ==========================================================================
+  // FILTRO + SEARCH
+  // ==========================================================================
+  function matchesLead(lead) {
+    // "Apenas nao contactados": esconde quem ja saiu do status novo
+    if (filters.naoContactados) {
+      const s = state.leads[lead.id] && state.leads[lead.id].status;
+      if (s && s !== 'novo') return false;
+    }
+    // "Novos nesta rodada": apenas leads com flag novo_nesta_rodada=true
+    if (filters.novosNestaRodada && !lead.novo_nesta_rodada) return false;
+    // Nicho / Segmento
+    if (filters.nicho && (lead.segmento || '') !== filters.nicho) return false;
+    // Cidade
+    if (filters.cidade && lead.cidade !== filters.cidade) return false;
+    // Chips
+    const ig = (lead.instagram && lead.instagram.url || '').startsWith('http');
+    if (filters.ig && !ig) return false;
+    if (filters.wa && !lead.whatsapp_ativo) return false;
+    if (filters.dono && !lead.dono) return false;
+    if (filters.cnpj && !lead.cnpj) return false;
+    if (filters.meta && lead.anuncia_meta !== 'sim') return false;
+    if (filters.email && !lead.email) return false;
+    if (filters.followupHoje) {
+      const fu = getFollowupStatus(lead.id);
+      if (!fu || fu.nextStep === null || fu.nextStep > 4) return false;
+      if (!fu.dueToday) return false;
+    }
+    if (filters.prio && (lead.priority_score || 0) < 70) return false;
+    if (filters.gmb_alta && (lead.servicos?.gmb?.classificacao !== 'alta')) return false;
+    if (filters.tp_alta && (lead.servicos?.trafego_pago?.classificacao !== 'alta')) return false;
+    // Search global
+    if (searchTerm) {
+      const hay = simple([
+        lead.nome, lead.dono, lead.bairro, lead.cidade, lead.nicho_cliente,
+        (lead.rapport_humano || []).join(' '),
+        (lead.gancho_dor || []).join(' '),
+        lead.razao_social, lead.nome_fantasia, lead.cnpj,
+      ].filter(Boolean).join(' '));
+      if (!hay.includes(simple(searchTerm))) return false;
+    }
+    return true;
+  }
+
+  // ==========================================================================
+  // RENDERIZACAO KANBAN
+  // ==========================================================================
+  function renderKanban() {
+    const kanban = document.getElementById('kanban');
+    kanban.innerHTML = '';
+    STATUSES.forEach(status => {
+      const col = document.createElement('section');
+      col.className = 'kanban-col flex-shrink-0 w-[320px] flex flex-col';
+      col.dataset.status = status.id;
+      const leadsInStatus = LEADS.leads.filter(l => state.leads[l.id].status === status.id && matchesLead(l));
+      col.innerHTML = `
+        <div class="flex items-center gap-2 mb-3 px-1 sticky top-0">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${status.color}"></span>
+          <h2 class="font-display text-[13px] tracking-tight">${status.label}</h2>
+          <span class="text-[11px] font-mono text-ink-dim nums">${leadsInStatus.length}</span>
+          <button class="ml-auto w-5 h-5 flex items-center justify-center text-ink-faded hover:text-ink-muted rounded" data-col-action="collapse" aria-label="Recolher coluna">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
+          </button>
+        </div>
+        <div class="kanban-col-body flex-1 flex flex-col gap-2 p-2 rounded-xl border border-dashed border-transparent min-h-[200px] transition-colors" data-col="${status.id}">
+          ${leadsInStatus.length === 0
+            ? `<div class="text-center py-8 text-[11px] text-ink-faded font-body">Arraste leads aqui</div>`
+            : leadsInStatus.map(renderCard).join('')
+          }
+        </div>
+      `;
+      kanban.appendChild(col);
+    });
+    initDragDrop();
+    updateCounter();
+  }
+
+  function renderCard(lead) {
+    const ig = (lead.instagram && lead.instagram.url || '').startsWith('http');
+    const wa = lead.whatsapp_ativo;
+    const meta = lead.anuncia_meta === 'sim';
+    const google = lead.anuncia_google === 'sim';
+    const temDono = !!lead.dono;
+    const temCnpj = !!lead.cnpj;
+    const prio = Math.round(lead.priority_score || 0);
+    const bairroCurto = (lead.bairro || '').split(',')[0].split(';')[0].trim().slice(0, 40);
+    const status = state.leads[lead.id].status;
+
+    const ehNovo   = CLOUD_MODE && !!lead.novo_nesta_rodada;
+    const ehSumido = !!lead.nao_visto_nesta_rodada;
+    return `
+    <article class="lead-card" data-lead-id="${lead.id}" data-status="${status}" ${ehSumido ? 'style="opacity:0.55"' : ''}>
+      ${ehNovo ? '<span class="badge-novo">Novo</span>' : ''}
+      ${ehSumido ? '<span style="position:absolute;top:-6px;right:-6px;background:#525252;color:#D4D4D4;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2">NÃO VISTO</span>' : ''}
+      <div class="drag-dots"><span></span><span></span><span></span></div>
+      <div class="flex items-start justify-between gap-2 mb-1.5">
+        <h3 class="font-display text-[13.5px] leading-snug text-ink flex-1 truncate" title="${esc(lead.nome)}">${esc(lead.nome)}</h3>
+        <span class="prio-pill ${prioClass(prio)} nums flex-shrink-0">${prio}</span>
+      </div>
+      ${temDono ? `
+        <div class="flex items-center gap-1.5 text-[11.5px] text-ink-muted mb-1">
+          <svg class="w-3 h-3 text-ink-dim flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="truncate">${esc((lead.dono || '').split(' ').slice(0,3).join(' '))}</span>
+          ${temCnpj ? `<span class="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded px-1.5 py-0.5 ml-1">CNPJ</span>` : ''}
+        </div>
+      ` : ''}
+      <div class="flex items-center gap-1 text-[11px] text-ink-dim mb-2 truncate">
+        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="truncate">${esc(bairroCurto)} · ${esc(lead.cidade || '')}</span>
+      </div>
+      <div class="flex flex-wrap gap-1">
+        ${Object.entries(lead.servicos || {}).filter(([,v])=>v.classificacao==='alta'||v.classificacao==='media').map(([sid,v])=>{
+          const cor = v.classificacao==='alta' ? '#4ade80,74,222,128' : '#fbbf24,251,191,36';
+          const [hex,r,g,b] = cor.split(',');
+          const label = (v.nome_servico||sid).replace('Google Meu Negócio','GMB').replace('Tráfego Pago','Tráfego');
+          return `<span class="badge" style="color:${hex};border-color:rgba(${r},${g},${b},0.35);background:rgba(${r},${g},${b},0.08)">${label} ${v.classificacao.toUpperCase()}</span>`;
+        }).join('')}
+        ${wa ? `<span class="badge st-ganhou"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</span>` : ''}
+        ${ig ? `<span class="badge st-respondeu"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>IG</span>` : ''}
+        ${meta ? `<span class="badge st-abordado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M22 12C22 6.477 17.523 2 12 2S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>Meta</span>` : ''}
+        ${google ? `<span class="badge st-agendado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z"/></svg>Google</span>` : ''}
+      </div>
+      ${renderCardFollowupBadge(lead.id)}
+      ${state.leads[lead.id].status === 'perdeu' && state.leads[lead.id].loss_reason ? `<div class="loss-reason">↳ ${esc(state.leads[lead.id].loss_reason)}</div>` : ''}
+    </article>
+    `;
+  }
+
+  // ==========================================================================
+  // DRAG-DROP (Sortable.js)
+  // ==========================================================================
+  function initDragDrop() {
+    document.querySelectorAll('.kanban-col-body').forEach(el => {
+      Sortable.create(el, {
+        group: 'kanban',
+        animation: 180,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        onStart: (evt) => {
+          document.querySelectorAll('.kanban-col').forEach(c => c.dataset.dropActive = 'true');
+        },
+        onEnd: (evt) => {
+          document.querySelectorAll('.kanban-col').forEach(c => delete c.dataset.dropActive);
+          const leadId = Number(evt.item.dataset.leadId);
+          const newStatus = evt.to.dataset.col;
+          const oldStatus = state.leads[leadId].status;
+          if (newStatus !== oldStatus) {
+            changeLeadStatus(leadId, newStatus, oldStatus);
+            evt.item.dataset.status = newStatus;
+            updateCounter();
+          }
+        }
+      });
+    });
+
+    // Click no card -> abre dossie
+    document.querySelectorAll('.lead-card').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.defaultPrevented) return;
+        openDossier(Number(el.dataset.leadId));
+      });
+    });
+  }
+
+  // ==========================================================================
+  // DOSSIE (slide-in direita)
+  // ==========================================================================
+  function openDossier(leadId) {
+    selectedLeadId = leadId;
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    renderDossierHead(lead);
+    renderDossierBody(lead);
+    activeTab = 'geral';
+    switchTab('geral');
+    document.getElementById('dossier').style.display = 'flex';
+    requestAnimationFrame(() => {
+      document.getElementById('dossier').classList.add('open');
+      document.getElementById('dossier-backdrop').classList.add('visible');
+    });
+  }
+
+  function closeDossier() {
+    const d = document.getElementById('dossier');
+    d.classList.remove('open');
+    document.getElementById('dossier-backdrop').classList.remove('visible');
+    setTimeout(() => { d.style.display = 'none'; selectedLeadId = null; }, 240);
+  }
+
+  function renderDossierHead(lead) {
+    const statusObj = STATUSES.find(s => s.id === state.leads[lead.id].status);
+    const wa = lead.whatsapp_wa_me;
+    const site = lead.site;
+    const maps = lead.maps_url;
+    const ig = (lead.instagram && lead.instagram.url || '');
+    const igOk = ig.startsWith('http');
+    const dono = lead.dono;
+    const fonte = lead.dono_fonte;
+    const fonteLabel = ({cnpj: 'via CNPJ', linkedin: 'via LinkedIn', maps: 'via Google Maps', site: 'via site', instagram: 'via Instagram'})[fonte] || fonte;
+
+    document.getElementById('dossier-head').innerHTML = `
+      <div class="flex items-start gap-4 mb-5">
+        <div class="avatar" style="background: ${avatarColor(lead.nome)}20; color: ${avatarColor(lead.nome)};">${initials(lead.nome)}</div>
+        <div class="flex-1 min-w-0">
+          <h2 class="font-display text-[20px] leading-tight mb-1">${esc(lead.nome)}</h2>
+          ${lead.razao_social ? `<p class="text-[12px] text-ink-dim font-body truncate">${esc(lead.razao_social)}</p>` : ''}
+          ${dono ? `<p class="text-[12.5px] text-ink-muted mt-1 truncate"><span class="text-ink-dim">Dono:</span> <span class="text-ink">${esc(dono)}</span> ${fonte ? `<span class="text-ink-faded text-[11px] ml-1">${fonteLabel}</span>` : ''}</p>` : '<p class="text-[12.5px] text-ink-dim mt-1 italic">Dono nao identificado</p>'}
+        </div>
+        <button id="btn-close-dossier" class="text-ink-dim hover:text-ink p-1" aria-label="Fechar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        ${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener" class="action-pill wa">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp</a>` : `<span class="action-pill disabled">Sem WhatsApp</span>`}
+        ${site ? `<a href="${esc(site)}" target="_blank" rel="noopener" class="action-pill"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Site</a>` : ''}
+        ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener" class="action-pill"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Maps</a>` : ''}
+        ${igOk ? `<a href="${esc(ig)}" target="_blank" rel="noopener" class="action-pill"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>Instagram</a>` : ''}
+        <select id="status-select" class="status-select ml-auto" data-lead="${lead.id}">
+          ${STATUSES.map(s => `<option value="${s.id}" ${statusObj.id === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}
+        </select>
+      </div>
+    `;
+
+    document.getElementById('btn-close-dossier').addEventListener('click', closeDossier);
+    document.getElementById('status-select').addEventListener('change', (e) => {
+      const newStatus = e.target.value;
+      const oldStatus = state.leads[lead.id].status;
+      if (newStatus !== oldStatus) {
+        changeLeadStatus(lead.id, newStatus, oldStatus, () => {
+          renderKanban();
+          renderDossierBody(lead);
+          renderDossierHead(lead);
+        });
+      }
+    });
+
+    // WhatsApp click registra atividade
+    const waLink = document.querySelector('.action-pill.wa');
+    if (waLink) {
+      waLink.addEventListener('click', () => {
+        state.leads[lead.id].activity = state.leads[lead.id].activity || [];
+        state.leads[lead.id].activity.unshift({ t: Date.now(), type: 'wa', msg: 'WhatsApp aberto' });
+        saveState();
+        cloudUpsertLead(lead.id);
+        setTimeout(() => renderDossierBody(lead), 100);
+      });
+    }
+  }
+
+  function renderDossierBody(lead) {
+    const body = document.getElementById('dossier-body');
+    body.innerHTML = `
+      <div class="tab-panel active" data-panel="geral">${renderTabGeral(lead)}</div>
+      <div class="tab-panel" data-panel="rapport">${renderTabRapport(lead)}</div>
+      <div class="tab-panel" data-panel="dor">${renderTabDor(lead)}</div>
+      <div class="tab-panel" data-panel="atividade">${renderTabAtividade(lead)}</div>
+      <div class="tab-panel" data-panel="followup">${renderTabFollowup(lead)}</div>
+    `;
+    initDossierInteractions(lead);
+  }
+
+  function renderTabGeral(l) {
+    const wa = l.whatsapp_numero;
+    return `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Contato</h3>
+      <div class="info-row">
+        <span class="info-k">Telefone</span>
+        <span class="info-v mono">${esc(fmtPhone(l.telefone))}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">WhatsApp</span>
+        <span class="info-v flex items-center gap-2">
+          <span class="mono">${esc(wa || '—')}</span>
+          ${wa ? `<button class="copy-btn text-[10px] px-2 py-0.5 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover" data-copy="${esc(wa)}">copiar</button>` : ''}
+          ${l.whatsapp_ativo ? '<span class="badge st-ganhou ml-1">validado</span>' : '<span class="badge st-novo">nao ativo</span>'}
+          ${l.whatsapp_perfil_nome ? `<span class="text-[11px] text-ink-dim">"${esc(l.whatsapp_perfil_nome)}"</span>` : ''}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">E-mail</span>
+        <span class="info-v flex items-center gap-2 flex-wrap">
+          ${l.email ? `
+            <a href="mailto:${esc(l.email)}" class="text-accent hover:underline mono text-[12px]">${esc(l.email)}</a>
+            <button class="copy-btn text-[10px] px-2 py-0.5 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover" data-copy="${esc(l.email)}">copiar</button>
+            ${l.email_fonte === 'registrobr_rdap' ? `<span class="badge st-ganhou text-[9px]">WHOIS</span>` : ''}
+            ${l.email_fonte === 'site_scraping'    ? `<span class="badge bg-sky-500/10 text-sky-400 border-sky-500/30 text-[9px]">site</span>` : ''}
+            ${l.email_fonte === 'cnpj_receita'     ? `<span class="badge bg-violet-500/10 text-violet-400 border-violet-500/30 text-[9px]">CNPJ</span>` : ''}
+            ${l.whois_nome ? `<span class="text-[11px] text-ink-dim">· ${esc(l.whois_nome)}</span>` : ''}
+          ` : '<span class="text-ink-dim">—</span>'}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Endereco</span>
+        <span class="info-v">${esc(l.endereco_completo || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Site</span>
+        <span class="info-v muted">${l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener" class="text-accent hover:underline break-all">${esc(l.site)}</a>` : '—'}</span>
+      </div>
+    </section>
+
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Empresa (CNPJ publico)</h3>
+      <div class="info-row">
+        <span class="info-k">CNPJ</span>
+        <span class="info-v mono">${esc(fmtCnpj(l.cnpj))} ${l.cnpj_fonte ? `<span class="text-[10px] text-ink-dim ml-1">via ${esc(l.cnpj_fonte)}</span>` : ''}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Razao Social</span>
+        <span class="info-v">${esc(l.razao_social || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Data abertura</span>
+        <span class="info-v">${esc(fmtDate(l.data_abertura))} ${l.tempo_mercado_anos ? `<span class="text-ink-dim text-[12px]">(${l.tempo_mercado_anos} anos)</span>` : ''}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Porte</span>
+        <span class="info-v">${esc(l.porte_receita || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">CNAE principal</span>
+        <span class="info-v">${esc(l.cnae_principal || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Capital social</span>
+        <span class="info-v mono">${esc(fmtMoney(l.capital_social))}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Situacao</span>
+        <span class="info-v">${esc(l.situacao_receita || '—')}</span>
+      </div>
+      ${l.socios_cnpj && l.socios_cnpj.length > 0 ? `
+      <div class="info-row">
+        <span class="info-k">Socios (QSA)</span>
+        <span class="info-v">
+          <div class="space-y-1.5">
+            ${l.socios_cnpj.map(s => `
+              <div class="flex items-start gap-2">
+                <span class="w-1 h-1 rounded-full bg-ink-dim mt-2 flex-shrink-0"></span>
+                <div class="text-[12.5px]">
+                  <span class="text-ink">${esc(s.nome || '')}</span>
+                  ${s.qualificacao ? `<span class="text-ink-dim ml-1 text-[11px]">(${esc(s.qualificacao)})</span>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </span>
+      </div>` : ''}
+    </section>
+
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Sinais do Google Maps</h3>
+      <div class="info-row">
+        <span class="info-k">Nota</span>
+        <span class="info-v nums">${esc(l.maps_nota || '—')} <span class="text-ink-dim">(${esc(l.maps_avaliacoes || 0)} avaliacoes)</span></span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Fotos</span>
+        <span class="info-v nums">${esc(l.maps_fotos || 0)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Ultima review</span>
+        <span class="info-v">${l.maps_recencia_dias ? `ha ${esc(l.maps_recencia_dias)} dias` : '—'}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">NRL (score)</span>
+        <span class="info-v mono">${esc(l.maps_nrl || '—')}</span>
+      </div>
+    </section>
+
+    <section>
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Sinais comerciais</h3>
+      <div class="info-row">
+        <span class="info-k">Anuncia Meta</span>
+        <span class="info-v">${renderSignal(l.anuncia_meta)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Anuncia Google</span>
+        <span class="info-v">${renderSignal(l.anuncia_google)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Priority score</span>
+        <span class="info-v"><span class="prio-pill ${prioClass(Math.round(l.priority_score||0))} nums">${Math.round(l.priority_score || 0)}</span></span>
+      </div>
+    </section>
+    `;
+  }
+
+  function renderSignal(v) {
+    if (v === 'sim') return '<span class="badge st-ganhou">Sim</span>';
+    if (v === 'nao' || v === 'nao_encontrado') return '<span class="badge st-perdeu">Nao</span>';
+    return `<span class="text-ink-dim text-[12px]">${esc(v || 'nao verificado')}</span>`;
+  }
+
+  function renderTabRapport(l) {
+    const r = l.rapport_humano || [];
+    const ig = l.instagram || {};
+    const msgWa = l.mensagem_wa || '';
+    return `
+    ${Object.keys(l.servicos||{}).length > 0 ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Mensagens de abertura por serviço</h3>
+      <div class="space-y-3">
+        ${Object.entries(l.servicos||{}).map(([sid, sv]) => {
+          if (!sv.mensagem_wa) return '';
+          const cor = sv.classificacao==='alta' ? 'emerald' : sv.classificacao==='media' ? 'amber' : 'zinc';
+          const corMap = {emerald:'#4ade80,74,222,128', amber:'#fbbf24,251,191,36', zinc:'#a1a1aa,161,161,170'};
+          const [hex,r,g,b] = (corMap[cor]||corMap.zinc).split(',');
+          const label = (sv.nome_servico||sid);
+          const msgId = `wa-msg-${l.id}-${sid}`;
+          return `
+          <div class="relative rounded-lg p-4 border" style="background:rgba(${r},${g},${b},0.05);border-color:rgba(${r},${g},${b},0.2)">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wide" style="color:${hex}">${label}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase" style="color:${hex};background:rgba(${r},${g},${b},0.12);border:1px solid rgba(${r},${g},${b},0.3)">${sv.classificacao}</span>
+            </div>
+            <p class="text-[13px] leading-relaxed text-ink pr-16" id="${msgId}">${esc(sv.mensagem_wa)}</p>
+            <button onclick="(function(btn){const el=document.getElementById('${msgId}');navigator.clipboard.writeText(el.innerText);btn.innerText='✓ Copiado!';setTimeout(()=>btn.innerText='Copiar',2000)})(this)"
+              class="absolute top-3 right-3 text-[10px] font-semibold rounded px-2 py-1 transition-colors"
+              style="color:${hex};background:rgba(${r},${g},${b},0.1);border:1px solid rgba(${r},${g},${b},0.25)">Copiar</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </section>` : (msgWa ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Mensagem de abertura (WhatsApp)</h3>
+      <div class="relative bg-[#0f1f1c] border border-emerald-500/25 rounded-lg p-4">
+        <p class="text-[13px] leading-relaxed text-ink pr-8" id="wa-msg-${l.id}">${esc(msgWa)}</p>
+        <button onclick="(function(){navigator.clipboard.writeText(document.getElementById('wa-msg-${l.id}').innerText);this.innerText='✓ Copiado!';setTimeout(()=>this.innerText='Copiar',2000)}).call(this)"
+          class="absolute top-3 right-3 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded px-2 py-1 hover:bg-emerald-500/20 transition-colors">Copiar</button>
+      </div>
+    </section>` : '')}
+    ${r.length > 0 ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Pontos de conexao humana</h3>
+      <ol class="space-y-3 list-none">
+        ${r.map((item, i) => `
+          <li class="flex gap-3 text-[13.5px] leading-relaxed text-ink">
+            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[11px] font-mono font-bold text-accent bg-accent-soft border border-accent-border rounded">${i+1}</span>
+            <span class="flex-1 pt-0.5">${esc(item)}</span>
+          </li>
+        `).join('')}
+      </ol>
+    </section>` : `<p class="text-ink-dim text-[13px] italic mb-6">Nenhum dado de rapport humano disponivel.</p>`}
+
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Contexto de negocio</h3>
+      <div class="info-row"><span class="info-k">Tempo de mercado</span><span class="info-v">${esc(l.tempo_mercado || '—')}</span></div>
+      <div class="info-row"><span class="info-k">Nicho cliente</span><span class="info-v">${esc(l.nicho_cliente || '—')}</span></div>
+      <div class="info-row"><span class="info-k">Bairro atuacao</span><span class="info-v">${esc(l.bairro || '—')}</span></div>
+      <div class="info-row"><span class="info-k">Equipe visivel</span><span class="info-v">${esc(l.equipe_visivel || '—')}</span></div>
+      <div class="info-row"><span class="info-k">Tom respostas Maps</span><span class="info-v">${esc(l.tom_respostas_maps || '—')}</span></div>
+    </section>
+
+    ${ig.handle ? `
+    <section>
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Instagram</h3>
+      <div class="info-row"><span class="info-k">Handle</span><span class="info-v">${ig.url ? `<a href="${esc(ig.url)}" target="_blank" rel="noopener" class="text-accent hover:underline">${esc(ig.handle)}</a>` : esc(ig.handle)}</span></div>
+      <div class="info-row"><span class="info-k">Bio</span><span class="info-v">${esc(ig.bio || '—')}</span></div>
+      <div class="info-row"><span class="info-k">Frequencia</span><span class="info-v">${esc(ig.frequencia || '—')}</span></div>
+      ${(ig.posts_recentes || []).length > 0 ? `
+      <div class="info-row">
+        <span class="info-k">Posts recentes</span>
+        <span class="info-v">
+          <ul class="space-y-1.5">
+            ${ig.posts_recentes.map(p => `
+              <li class="flex items-start gap-2 text-[12.5px]">
+                <span class="text-[10px] text-ink-dim mt-0.5 font-mono min-w-[66px]">${esc(p.data || '')}</span>
+                <div class="flex-1">
+                  <span class="text-ink">${esc(p.tema || '')}</span>
+                  ${p.tipo ? `<span class="ml-1.5 text-[10px] text-ink-faded">(${esc(p.tipo)})</span>` : ''}
+                </div>
+              </li>
+            `).join('')}
+          </ul>
+        </span>
+      </div>` : ''}
+    </section>` : ''}
+    `;
+  }
+
+  // ==========================================================================
+  // FOLLOW-UP RÉGUA
+  // ==========================================================================
+  const FU_STEPS = [
+    { n: 1, label: 'Abordagem inicial',   dias: 0 },
+    { n: 2, label: 'Novo ângulo',         dias: 2 },
+    { n: 3, label: 'Verificação direta',  dias: 5 },
+    { n: 4, label: 'Saída honrosa',       dias: 7 },
+  ];
+
+  const LOSS_REASONS = [
+    'Sem resposta após régua completa',
+    'Não tem interesse no momento',
+    'Já tem fornecedor/agência',
+    'Preço / orçamento',
+    'Não é o decisor',
+    'Outro',
+  ];
+
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  function isToday(ts) {
+    if (!ts) return false;
+    const d = new Date(ts), n = new Date();
+    return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+  }
+
+  function isPast(ts) {
+    if (!ts) return false;
+    return ts < Date.now() && !isToday(ts);
+  }
+
+  function getFollowupStatus(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls) return null;
+    const baseTs = ls.followup_start;
+    if (!baseTs) return null;
+    const sent = ls.followup_sent || {};   // {1: ts, 2: ts, ...}
+    // find next unsent step
+    let nextStep = null, dueTs = null;
+    for (const step of FU_STEPS) {
+      if (!sent[step.n]) {
+        nextStep = step.n;
+        // calculate due date from last sent step or base
+        const lastSentTs = step.n > 1 ? (sent[step.n-1] || baseTs) : baseTs;
+        dueTs = lastSentTs + step.dias * 86400000;
+        break;
+      }
+    }
+    return {
+      nextStep,
+      dueTs,
+      dueToday: isToday(dueTs),
+      overdue: isPast(dueTs),
+      sent,
+      baseTs,
+    };
+  }
+
+  function renderCardFollowupBadge(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls || !ls.followup_start) return '';
+    const fu = getFollowupStatus(leadId);
+    if (!fu || fu.nextStep === null) {
+      return `<div class="fu-badge done mt-1">✅ Régua completa</div>`;
+    }
+    const step = FU_STEPS.find(s => s.n === fu.nextStep);
+    if (fu.overdue) {
+      return `<div class="fu-badge overdue">🔴 Etapa ${fu.nextStep} · atrasado ${fmtDate(fu.dueTs)}</div>`;
+    }
+    if (fu.dueToday) {
+      return `<div class="fu-badge due">🟡 Etapa ${fu.nextStep} · hoje</div>`;
+    }
+    return `<div class="fu-badge ok">📅 Etapa ${fu.nextStep} · ${fmtDate(fu.dueTs)}</div>`;
+  }
+
+  function getFuMessage(lead, stepN) {
+    const ls = state.leads[lead.id];
+    const gancho = lead.gancho_dor || [];
+    const dono = (lead.dono || '').split(' ')[0] || lead.nome.split(' ')[0];
+    const nome = lead.nome;
+    if (stepN === 1) return lead.mensagem_wa || (gancho[0] || '').replace(/^\[[^\]]+\]\s*/, '');
+    if (stepN === 2) {
+      // use DOR angle
+      const dorMsg = gancho.find(g => g.startsWith('[DOR]')) || gancho[1] || '';
+      return dorMsg.replace(/^\[[^\]]+\]\s*/, '');
+    }
+    if (stepN === 3) {
+      // Option A: direct yes/no question
+      return `Oi ${dono}! Ainda faz sentido avaliar novas formas de captar clientes para a ${nome}? Um sim ou não já me ajuda.`;
+    }
+    if (stepN === 4) {
+      return `Oi ${dono}, fica tranquilo se não for o momento certo para a ${nome}. Me fala "não é agora" que eu respeito. Se quiser conversar quando fizer sentido, estarei por aqui.`;
+    }
+    return '';
+  }
+
+  function renderTabFollowup(lead) {
+    const ls = state.leads[lead.id];
+    if (!ls) return '';
+    const fu = getFollowupStatus(lead.id);
+    const sent = (ls.followup_sent || {});
+    const baseTs = ls.followup_start;
+
+    if (!baseTs) {
+      return `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
+        <p class="text-[13px] text-ink-dim italic">Mova este lead para <strong class="text-ink">Abordado</strong> para iniciar a régua automaticamente.</p>
+      </section>`;
+    }
+
+    const stepsHtml = FU_STEPS.map(step => {
+      const isSent = !!sent[step.n];
+      const isNext = fu && fu.nextStep === step.n;
+      const dueTs = isSent ? sent[step.n] : (fu && isNext ? fu.dueTs : null);
+      let dotClass = 'pending', dotIcon = step.n;
+      if (isSent) { dotClass = 'done'; dotIcon = '✓'; }
+      else if (isNext && fu.overdue) { dotClass = 'overdue'; dotIcon = '!'; }
+      else if (isNext) { dotClass = 'active'; dotIcon = step.n; }
+
+      const msg = getFuMessage(lead, step.n);
+      const msgId = `fu-msg-${lead.id}-${step.n}`;
+
+      return `<div class="fu-step">
+        <div class="fu-step-dot ${dotClass}">${dotIcon}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <span class="text-[13px] font-semibold text-ink">Etapa ${step.n} — ${step.label}</span>
+            <span class="text-[11px] text-ink-dim flex-shrink-0">
+              ${isSent ? `✅ enviado ${fmtDate(sent[step.n])}` : (dueTs ? `${fu && fu.overdue && isNext ? '🔴 atrasado · ' : ''}previsto ${fmtDate(dueTs)}` : '—')}
+            </span>
+          </div>
+          ${msg ? `<p id="${msgId}" class="text-[12.5px] text-ink-dim leading-relaxed mb-2 whitespace-pre-line">${esc(msg)}</p>` : ''}
+          ${!isSent && isNext ? `
+            <div class="flex gap-2">
+              <button onclick="copyFuMsg('${msgId}')" class="text-[11px] px-3 py-1 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover transition-colors">Copiar mensagem</button>
+              <button onclick="markFuSent(${lead.id}, ${step.n})" class="text-[11px] px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 hover:bg-blue-500/20 transition-colors">Marcar como enviado</button>
+            </div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-4">Régua de Follow-up · iniciada ${fmtDate(baseTs)}</h3>
+      <div>${stepsHtml}</div>
+    </section>`;
+  }
+
+  function copyFuMsg(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(() => {
+      const btn = el.closest('.fu-step')?.querySelector('button');
+      if (btn) { const orig = btn.innerText; btn.innerText = '✓ Copiado!'; setTimeout(() => btn.innerText = orig, 2000); }
+    });
+  }
+
+  function markFuSent(leadId, stepN) {
+    const ls = state.leads[leadId];
+    if (!ls) return;
+    ls.followup_sent = ls.followup_sent || {};
+    ls.followup_sent[stepN] = Date.now();
+    ls.activity = ls.activity || [];
+    const stepLabel = FU_STEPS.find(s => s.n === stepN)?.label || `Etapa ${stepN}`;
+    ls.activity.unshift({ t: Date.now(), type: 'followup', msg: `Follow-up Etapa ${stepN} (${stepLabel}) marcado como enviado` });
+    saveState();
+    cloudUpsertLead(leadId);
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    if (lead) renderDossierBody(lead);
+    renderKanban();
+    toast(`Etapa ${stepN} registrada`);
+  }
+
+  // Unified status change handler
+  function changeLeadStatus(leadId, newStatus, oldStatus, afterFn) {
+    if (newStatus === 'perdeu') {
+      showLossReasonPopup(leadId, newStatus, oldStatus, afterFn);
+      return;
+    }
+    _applyStatusChange(leadId, newStatus, oldStatus);
+    if (afterFn) afterFn();
+  }
+
+  function _applyStatusChange(leadId, newStatus, oldStatus, lossReason) {
+    state.leads[leadId].status = newStatus;
+    state.leads[leadId].activity = state.leads[leadId].activity || [];
+    const msg = `Movido de ${STATUSES.find(s=>s.id===oldStatus)?.label||oldStatus} para ${STATUSES.find(s=>s.id===newStatus)?.label||newStatus}`;
+    state.leads[leadId].activity.unshift({ t: Date.now(), type: 'status', msg });
+    // Record first contact date when moved to "abordado"
+    if (newStatus === 'abordado' && !state.leads[leadId].followup_start) {
+      state.leads[leadId].followup_start = Date.now();
+      state.leads[leadId].followup_sent = {};
+      state.leads[leadId].activity.unshift({ t: Date.now(), type: 'followup', msg: 'Régua de follow-up iniciada' });
+    }
+    if (lossReason) {
+      state.leads[leadId].loss_reason = lossReason;
+      state.leads[leadId].activity.unshift({ t: Date.now(), type: 'loss', msg: `Motivo da perda: ${lossReason}` });
+    }
+    saveState();
+    cloudUpsertLead(leadId);
+    toast(`Status atualizado para ${STATUSES.find(s=>s.id===newStatus)?.label||newStatus}`);
+  }
+
+  function showLossReasonPopup(leadId, newStatus, oldStatus, afterFn) {
+    // Remove any existing popup
+    document.getElementById('loss-popup')?.remove();
+    const popup = document.createElement('div');
+    popup.id = 'loss-popup';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)';
+    popup.innerHTML = `
+      <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:16px;padding:28px;width:380px;max-width:90vw;">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#F5F5F5">Por que esse lead foi perdido?</h3>
+        <p style="font-size:12px;color:#737373;margin-bottom:20px">Escolha o motivo para registrar no histórico</p>
+        <div id="loss-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          ${LOSS_REASONS.map((r,i) => `
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid #2E2E2E;cursor:pointer;transition:all 140ms" class="loss-opt" data-idx="${i}">
+              <input type="radio" name="loss_r" value="${esc(r)}" style="accent-color:#3B82F6">
+              <span style="font-size:13px;color:#D4D4D4">${esc(r)}</span>
+            </label>
+          `).join('')}
+        </div>
+        <div id="loss-outro-wrap" style="display:none;margin-bottom:16px">
+          <input id="loss-outro-input" type="text" placeholder="Descreva o motivo..." style="width:100%;background:#111;border:1px solid #333;border-radius:8px;padding:10px 14px;font-size:13px;color:#F5F5F5;outline:none;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="loss-cancel" style="padding:8px 18px;border-radius:8px;border:1px solid #2E2E2E;background:transparent;color:#A3A3A3;font-size:13px;cursor:pointer">Cancelar</button>
+          <button id="loss-confirm" style="padding:8px 18px;border-radius:8px;border:none;background:#EF4444;color:white;font-size:13px;font-weight:600;cursor:pointer;opacity:0.4" disabled>Confirmar perda</button>
+        </div>
+      </div>`;
+    document.body.appendChild(popup);
+
+    let selected = null;
+    popup.querySelectorAll('.loss-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        popup.querySelectorAll('.loss-opt').forEach(o => o.style.borderColor = '#2E2E2E');
+        opt.style.borderColor = '#3B82F6';
+        selected = opt.querySelector('input').value;
+        opt.querySelector('input').checked = true;
+        document.getElementById('loss-outro-wrap').style.display = selected === 'Outro' ? 'block' : 'none';
+        document.getElementById('loss-confirm').disabled = false;
+        document.getElementById('loss-confirm').style.opacity = '1';
+      });
+    });
+
+    document.getElementById('loss-cancel').addEventListener('click', () => {
+      popup.remove();
+      // Revert select in dossier if open
+      const sel = document.getElementById('status-select');
+      if (sel) sel.value = oldStatus;
+    });
+
+    document.getElementById('loss-confirm').addEventListener('click', () => {
+      let reason = selected;
+      if (reason === 'Outro') reason = document.getElementById('loss-outro-input').value.trim() || 'Outro';
+      popup.remove();
+      _applyStatusChange(leadId, newStatus, oldStatus, reason);
+      if (afterFn) afterFn();
+      renderKanban();
+    });
+  }
+
+  function copyGancho(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(() => {
+      const btn = el.closest('li')?.querySelector('button');
+      if (btn) { btn.innerText = '✓ Copiado!'; setTimeout(() => btn.innerText = 'Copiar', 2000); }
+    });
+  }
+
+  function renderTabDor(l) {
+    const g = l.gancho_dor || [];
+
+    // Label colour map for [LABEL] prefixes
+    const LABEL_MAP = {
+      'DADO DE MERCADO': { bg: 'bg-sky-500/10',    border: 'border-sky-500/30',    text: 'text-sky-400',    icon: '📊' },
+      'DOR':             { bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   text: 'text-rose-400',   icon: '⚡' },
+      'DESEJO':          { bg: 'bg-emerald-500/10',border: 'border-emerald-500/30',text: 'text-emerald-400',icon: '🎯' },
+    };
+
+    function renderGanchoItem(item, i) {
+      const match = item.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+      if (match) {
+        const label = match[1].trim().toUpperCase();
+        const body  = match[2].trim();
+        const c     = LABEL_MAP[label] || { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: '💬' };
+        const msgId = 'gancho-' + l.id + '-' + i;
+        return `
+          <li class="rounded-lg border ${c.border} ${c.bg} overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-2 border-b ${c.border}">
+              <span class="text-[11px] font-display uppercase tracking-[0.12em] font-semibold ${c.text}">${c.icon} ${label}</span>
+              <button onclick="copyGancho('${msgId}')" class="text-[11px] text-ink-dim hover:text-ink transition-colors px-2 py-0.5 rounded hover:bg-white/5">Copiar</button>
+            </div>
+            <p id="${msgId}" class="px-4 py-3 text-[13.5px] leading-relaxed text-ink whitespace-pre-line">${esc(body)}</p>
+          </li>`;
+      }
+      // Fallback: plain numbered item
+      return `
+        <li class="flex gap-3 text-[13.5px] leading-relaxed text-ink">
+          <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded">${i+1}</span>
+          <span class="flex-1 pt-0.5">${esc(item)}</span>
+        </li>`;
+    }
+
+    return `
+    ${g.length > 0 ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Abordagens de prospecção</h3>
+      <ul class="space-y-3 list-none">
+        ${g.map((item, i) => renderGanchoItem(item, i)).join('')}
+      </ul>
+    </section>` : `<p class="text-ink-dim text-[13px] italic mb-6">Nenhum gancho de dor registrado.</p>`}
+
+    ${l.proposta_valor ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Proposta de valor atual</h3>
+      <p class="text-[13.5px] text-ink leading-relaxed">${esc(l.proposta_valor)}</p>
+    </section>` : ''}
+
+    ${l.site_gap ? `
+    <section>
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Gap do site</h3>
+      <p class="text-[13.5px] text-ink leading-relaxed">${esc(l.site_gap)}</p>
+    </section>` : ''}
+    `;
+  }
+
+  function renderTabAtividade(l) {
+    const act = state.leads[l.id].activity || [];
+    const notes = state.leads[l.id].notes || [];
+    const entries = [
+      ...act.map(a => ({ ...a, kind: 'act' })),
+      ...notes.map(n => ({ ...n, kind: 'note' })),
+    ].sort((a, b) => b.t - a.t);
+
+    return `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Adicionar nota</h3>
+      <form id="note-form" class="mb-4">
+        <textarea id="note-input" placeholder="Anotacao rapida - o que conversou, proximos passos, observacoes..." rows="3" class="w-full bg-panel border border-line rounded-lg p-3 text-[13px] text-ink placeholder:text-ink-faded resize-none font-body focus:outline-none focus:border-accent transition-colors"></textarea>
+        <div class="flex items-center justify-end mt-2 gap-2">
+          <button type="submit" class="action-pill" style="background: #3B82F6; color: white; border-color: #3B82F6;">Adicionar</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Timeline</h3>
+      ${entries.length === 0 ? `<p class="text-ink-dim text-[13px] italic">Nenhuma atividade ainda.</p>` : `
+        <div class="relative">
+          ${entries.map(e => `
+            <div class="timeline-item">
+              <p class="text-[12px] font-mono text-ink-dim mb-0.5">${esc(new Date(e.t).toLocaleString('pt-BR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}))}</p>
+              <p class="text-[13.5px] text-ink leading-relaxed">${esc(e.msg || e.text || '')}</p>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    </section>
+    `;
+  }
+
+  function initDossierInteractions(lead) {
+    // Copy WhatsApp
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(btn.dataset.copy).then(() => {
+          const prev = btn.textContent;
+          btn.textContent = 'copiado';
+          setTimeout(() => { btn.textContent = prev; }, 1200);
+        });
+      });
+    });
+    // Submit nota
+    const form = document.getElementById('note-form');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('note-input');
+        const text = input.value.trim();
+        if (!text) return;
+        state.leads[lead.id].notes = state.leads[lead.id].notes || [];
+        state.leads[lead.id].notes.unshift({ t: Date.now(), text, type: 'note', msg: text });
+        saveState();
+        cloudUpsertLead(lead.id);
+        renderDossierBody(lead);
+        toast('Nota adicionada');
+      });
+    }
+  }
+
+  // Tabs
+  function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === id));
+    activeTab = id;
+  }
+
+  // ==========================================================================
+  // COMMAND PALETTE
+  // ==========================================================================
+  function openPalette() {
+    document.getElementById('palette').style.display = 'block';
+    requestAnimationFrame(() => {
+      document.getElementById('palette').classList.add('visible');
+      document.getElementById('palette-backdrop').classList.add('visible');
+      document.getElementById('palette-input').focus();
+    });
+    renderPalette('');
+  }
+  function closePalette() {
+    document.getElementById('palette').classList.remove('visible');
+    document.getElementById('palette-backdrop').classList.remove('visible');
+    setTimeout(() => { document.getElementById('palette').style.display = 'none'; document.getElementById('palette-input').value = ''; }, 200);
+  }
+  function renderPalette(q) {
+    const qn = simple(q);
+    const actions = [
+      { id: 'export', title: 'Exportar CSV', sub: 'Baixa lista atual com status e notas', icon: 'download' },
+      { id: 'reset', title: 'Resetar pipeline', sub: 'Volta todos pra Novo, apaga notas', icon: 'rotate' },
+      { id: 'theme', title: 'Alternar tema', sub: 'Dark / light', icon: 'moon' },
+    ];
+    const leadMatches = LEADS.leads.filter(l => {
+      if (!qn) return true;
+      const hay = simple([l.nome, l.dono, l.bairro, l.cidade, l.nicho_cliente, l.email].filter(Boolean).join(' '));
+      return hay.includes(qn);
+    }).slice(0, 20);
+
+    const actMatches = actions.filter(a => !qn || simple(a.title + ' ' + a.sub).includes(qn));
+
+    const list = document.getElementById('palette-list');
+    list.innerHTML = `
+      ${actMatches.length > 0 ? `
+      <div class="text-[10px] uppercase tracking-widest text-ink-faded px-3 pt-2 pb-1 font-semibold">Acoes</div>
+      ${actMatches.map((a, i) => `
+        <div class="palette-item" data-action="${a.id}" data-idx="${i}">
+          <svg class="w-4 h-4 text-ink-dim" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${iconFor(a.icon)}</svg>
+          <div class="flex-1 min-w-0">
+            <div class="truncate">${esc(a.title)}</div>
+            <div class="sub truncate">${esc(a.sub)}</div>
+          </div>
+          <span class="meta">enter</span>
+        </div>
+      `).join('')}
+      ` : ''}
+      ${leadMatches.length > 0 ? `
+      <div class="text-[10px] uppercase tracking-widest text-ink-faded px-3 pt-3 pb-1 font-semibold">Leads <span class="text-ink-faded normal-case">(${leadMatches.length})</span></div>
+      ${leadMatches.map((l, i) => {
+        const prio = Math.round(l.priority_score || 0);
+        return `
+        <div class="palette-item" data-lead="${l.id}" data-idx="${actMatches.length + i}">
+          <div class="avatar" style="width:28px; height:28px; border-radius:7px; font-size:11px; background:${avatarColor(l.nome)}20; color:${avatarColor(l.nome)};">${initials(l.nome)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="truncate">${esc(l.nome)}</div>
+            <div class="sub truncate">${esc((l.dono || 'sem dono') + ' · ' + (l.cidade || ''))}</div>
+          </div>
+          <span class="prio-pill ${prioClass(prio)} nums">${prio}</span>
+        </div>
+      `; }).join('')}
+      ` : ''}
+      ${leadMatches.length === 0 && actMatches.length === 0 ? `<p class="text-center py-8 text-[13px] text-ink-dim">Nada encontrado pra "${esc(q)}"</p>` : ''}
+    `;
+    paletteIndex = 0;
+    highlightPalette();
+    list.querySelectorAll('.palette-item').forEach(el => {
+      el.addEventListener('click', () => executePaletteItem(el));
+    });
+  }
+  function highlightPalette() {
+    const items = document.querySelectorAll('#palette-list .palette-item');
+    items.forEach((el, i) => el.classList.toggle('active', i === paletteIndex));
+    const active = items[paletteIndex];
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+  function executePaletteItem(el) {
+    if (el.dataset.action) {
+      closePalette();
+      if (el.dataset.action === 'export') exportCsv();
+      if (el.dataset.action === 'reset') openConfirm();
+      if (el.dataset.action === 'theme') toggleTheme();
+    } else if (el.dataset.lead) {
+      closePalette();
+      openDossier(Number(el.dataset.lead));
+    }
+  }
+  function iconFor(k) {
+    const map = {
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+      rotate: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+      moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+    };
+    return map[k] || '<circle cx="12" cy="12" r="10"/>';
+  }
+
+  // ==========================================================================
+  // EXPORT CSV
+  // ==========================================================================
+  function exportCsv() {
+    const headers = ['id','nome','dono','cnpj','cidade','bairro','telefone','whatsapp','wa_ativo','instagram','site','email','status','notas','score_prioridade'];
+    const rows = LEADS.leads.map(l => {
+      const s = state.leads[l.id];
+      const notes = (s.notes || []).map(n => n.text).join(' | ').replace(/"/g, '""');
+      return [
+        l.id,
+        l.nome || '',
+        l.dono || '',
+        l.cnpj || '',
+        l.cidade || '',
+        (l.bairro || '').split(',')[0],
+        l.telefone || '',
+        l.whatsapp_numero || '',
+        l.whatsapp_ativo ? 'sim' : 'nao',
+        (l.instagram && l.instagram.url) || '',
+        l.site || '',
+        l.email || '',
+        STATUSES.find(st => st.id === s.status)?.label || 'Novo',
+        notes,
+        Math.round(l.priority_score || 0),
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+    });
+    const csv = '\ufeff' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `ethos-crm-leads-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV exportado');
+  }
+
+  // ==========================================================================
+  // RESET (com confirmacao)
+  // ==========================================================================
+  function openConfirm() {
+    document.getElementById('confirm-backdrop').classList.remove('hidden-force');
+  }
+  function closeConfirm() {
+    document.getElementById('confirm-backdrop').classList.add('hidden-force');
+  }
+  function doReset() {
+    localStorage.removeItem(LS_KEY);
+    state = initialState();
+    saveState();
+    if (CLOUD_MODE && supabaseClient) {
+      // Reset cloud: zera status/notes/activity para todos os leads desta agência
+      bumpPending(1);
+      supabaseClient
+        .from('leads')
+        .update({ status: 'novo', notes: [], activity: [] })
+        .eq('agencia', CRM_CONFIG.agencia)
+        .then(() => bumpPending(-1))
+        .catch(e => { console.error('[cloud] reset falhou', e); bumpPending(-1); });
+    }
+    renderKanban();
+    closeConfirm();
+    if (selectedLeadId) closeDossier();
+    toast('Pipeline resetado');
+  }
+
+  // ==========================================================================
+  // THEME TOGGLE (bonus)
+  // ==========================================================================
+  function toggleTheme() {
+    const cur = state.theme === 'dark' ? 'light' : 'dark';
+    state.theme = cur;
+    document.body.classList.toggle('light', cur === 'light');
+    saveState();
+  }
+
+  // ==========================================================================
+  // TOAST
+  // ==========================================================================
+  let toastTimer;
+  function toast(msg) {
+    document.getElementById('toast-msg').textContent = msg;
+    document.getElementById('toast').classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      document.getElementById('toast').classList.remove('visible');
+    }, 2400);
+  }
+
+  // ==========================================================================
+  // COUNTERS + STATS
+  // ==========================================================================
+  function updateCounter() {
+    const visible = LEADS.leads.filter(matchesLead).length;
+    document.getElementById('counter').textContent = `${visible} ${visible === 1 ? 'lead' : 'leads'}`;
+  }
+  function renderHeaderStats() {
+    const all = LEADS.leads;
+    const n_wa = all.filter(l => l.whatsapp_ativo).length;
+    const n_dono = all.filter(l => l.dono).length;
+    const n_ig = all.filter(l => (l.instagram && l.instagram.url || '').startsWith('http')).length;
+    const n_cnpj = all.filter(l => l.cnpj).length;
+    const stats = [
+      { k: 'Total', v: all.length, c: '' },
+      { k: 'WhatsApp real', v: n_wa, c: '#10B981' },
+      { k: 'Com dono', v: n_dono, c: '#3B82F6' },
+      { k: 'Em follow-up', v: LEADS.leads.filter(l => state.leads[l.id]?.followup_start && getFollowupStatus(l.id)?.nextStep).length, c: '#3B82F6' },
+      { k: 'Follow-up hoje', v: LEADS.leads.filter(l => { const fu = getFollowupStatus(l.id); return fu && (fu.dueToday || fu.overdue) && fu.nextStep; }).length, c: '#FBBF24' },
+      { k: 'Com Instagram', v: n_ig, c: '#A78BFA' },
+      { k: 'CNPJ', v: n_cnpj, c: '#F59E0B' },
+    ];
+    document.getElementById('header-stats').innerHTML = stats.map(s => `
+      <div class="flex items-baseline gap-1.5">
+        <span class="font-display font-bold text-[14px] nums" ${s.c ? `style="color:${s.c}"` : ''}>${s.v}</span>
+        <span class="text-[11px] text-ink-dim font-ui">${s.k}</span>
+      </div>
+    `).join('<span class="w-px h-4 bg-line"></span>');
+  }
+
+  // ==========================================================================
+  // FILTROS (chips + cidade)
+  // ==========================================================================
+  function initFilters() {
+    document.querySelectorAll('.chip[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const k = chip.dataset.filter;
+        filters[k] = !filters[k];
+        chip.classList.toggle('active', filters[k]);
+        renderKanban();
+      });
+    });
+    // Nicho select
+    const nichos = [...new Set(LEADS.leads.map(l => l.segmento).filter(Boolean))].sort();
+    const selNicho = document.getElementById('filter-nicho');
+    if (nichos.length <= 1) {
+      selNicho.style.display = 'none'; // esconde se só tem 1 nicho
+    } else {
+      nichos.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        selNicho.appendChild(opt);
+      });
+    }
+    selNicho.addEventListener('change', (e) => { filters.nicho = e.target.value; renderKanban(); });
+
+    // Cidade select
+    const cidades = [...new Set(LEADS.leads.map(l => l.cidade).filter(Boolean))].sort();
+    const sel = document.getElementById('filter-cidade');
+    cidades.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', (e) => { filters.cidade = e.target.value; renderKanban(); });
+    document.getElementById('btn-clear-filters').addEventListener('click', () => {
+      filters = { ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, prio: false, cidade: '', nicho: '', gmb_alta: false, tp_alta: false };
+      document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
+      selNicho.value = '';
+      sel.value = '';
+      renderKanban();
+    });
+  }
+
+  // ==========================================================================
+  // KEYBINDINGS
+  // ==========================================================================
+  function initKeybindings() {
+    document.addEventListener('keydown', (e) => {
+      // Cmd+K / Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openPalette();
+      }
+      // ESC
+      if (e.key === 'Escape') {
+        if (document.getElementById('palette').classList.contains('visible')) closePalette();
+        else if (document.getElementById('dossier').classList.contains('open')) closeDossier();
+        else if (!document.getElementById('confirm-backdrop').classList.contains('hidden-force')) closeConfirm();
+      }
+      // Palette navigation
+      if (document.getElementById('palette').classList.contains('visible')) {
+        const items = document.querySelectorAll('#palette-list .palette-item');
+        if (e.key === 'ArrowDown') { e.preventDefault(); paletteIndex = Math.min(items.length-1, paletteIndex+1); highlightPalette(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); paletteIndex = Math.max(0, paletteIndex-1); highlightPalette(); }
+        if (e.key === 'Enter')     { e.preventDefault(); if (items[paletteIndex]) executePaletteItem(items[paletteIndex]); }
+      }
+    });
+    // Palette input
+    document.getElementById('palette-input').addEventListener('input', (e) => renderPalette(e.target.value));
+    // Backdrops
+    document.getElementById('palette-backdrop').addEventListener('click', closePalette);
+    document.getElementById('dossier-backdrop').addEventListener('click', closeDossier);
+  }
+
+  // ==========================================================================
+  // TABS (do dossie)
+  // ==========================================================================
+  function initTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+  }
+
+  // ==========================================================================
+  // EXECUCOES (modal)
+  // ==========================================================================
+  function fmtTimeAgo(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'agora';
+    if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h atrás';
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function openExecucoes() {
+    document.getElementById('execs-backdrop').classList.remove('hidden-force');
+    document.getElementById('execs-modal').classList.remove('hidden-force');
+    const body = document.getElementById('execs-body');
+    body.innerHTML = '<p class="text-ink-dim italic">Carregando histórico...</p>';
+    const lista = await cloudFetchExecucoes();
+    if (!lista.length) {
+      body.innerHTML = '<p class="text-ink-dim italic">Nenhuma execução registrada ainda. Rode o pipeline para começar.</p>';
+      return;
+    }
+    body.innerHTML = `
+      <div class="space-y-3">
+        ${lista.map(e => `
+          <div class="bg-panel border border-line rounded-lg p-4">
+            <div class="flex items-baseline justify-between gap-3 mb-2">
+              <div>
+                <span class="font-display text-[14px] text-ink">${esc(e.segmento || 'geral')}</span>
+                <span class="text-[12px] text-ink-dim ml-2">${esc(e.cidade || '')}</span>
+              </div>
+              <span class="text-[11px] text-ink-faded font-mono">${fmtTimeAgo(e.data_execucao)}</span>
+            </div>
+            <div class="flex items-center gap-4 text-[12px]">
+              <span><span class="text-emerald-400 font-bold nums">+${e.leads_novos || 0}</span> <span class="text-ink-dim">novos</span></span>
+              <span><span class="text-ink-muted nums">${e.leads_existentes || 0}</span> <span class="text-ink-dim">preservados</span></span>
+              <span class="text-ink-faded">${e.leads_extraidos || 0} extraídos · ${e.duracao_segundos || 0}s</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  function closeExecucoes() {
+    document.getElementById('execs-backdrop').classList.add('hidden-force');
+    document.getElementById('execs-modal').classList.add('hidden-force');
+  }
+
+  // ==========================================================================
+  // CLOUD INIT — busca estado da nuvem e mescla com state local
+  // ==========================================================================
+  async function bootCloud() {
+    if (!CLOUD_MODE) return;
+    document.getElementById('sync-indicator').classList.remove('hidden');
+    document.getElementById('btn-execucoes').classList.remove('hidden');
+    document.getElementById('chip-nao-contactados').style.display = '';
+    document.getElementById('chip-novos').style.display = '';
+    // Pre-marcar chip "naoContactados" como ativo
+    const chip = document.querySelector('.chip[data-filter="naoContactados"]');
+    if (chip && filters.naoContactados) chip.classList.add('active');
+
+    if (!supabaseClient) {
+      setSyncStatus('Aguardando lib...', '#F59E0B');
+      // Aguarda supabase-js (defer carrega depois do DOM)
+      let tentativas = 0;
+      while (typeof supabase === 'undefined' && tentativas < 30) {
+        await new Promise(r => setTimeout(r, 100));
+        tentativas++;
+      }
+      if (typeof supabase !== 'undefined' && supabase.createClient) {
+        supabaseClient = supabase.createClient(CRM_CONFIG.supabaseUrl, CRM_CONFIG.supabaseAnonKey, {
+          auth: { persistSession: false },
+        });
+      } else {
+        setSyncStatus('Lib falhou', '#EF4444');
+        return;
+      }
+    }
+
+    const cloud = await cloudFetchLeads();
+    if (!cloud) return;
+    if (cloud.length === 0) {
+      setSyncStatus('Vazio', '#F59E0B');
+      return;
+    }
+    cloud.forEach(c => {
+      const lid = parseInt(c.external_id);
+      if (isNaN(lid)) return;
+      supabaseIdMap[lid] = c.id;
+      if (state.leads[lid]) {
+        state.leads[lid].status = c.status || 'novo';
+        state.leads[lid].notes = c.notes || [];
+        state.leads[lid].activity = c.activity || [];
+      }
+      const local = LEADS.leads.find(l => l.id === lid);
+      if (local) local.novo_nesta_rodada = !!c.novo_nesta_rodada;
+    });
+    saveState();
+    renderKanban();
+    renderHeaderStats();
+  }
+
+  // ==========================================================================
+  // INIT
+  // ==========================================================================
+  function init() {
+    // Tema
+    if (state.theme === 'light') document.body.classList.add('light');
+    // Render inicial
+    renderHeaderStats();
+    renderKanban();
+    initFilters();
+    initKeybindings();
+    initTabs();
+
+    // Botoes do header
+    document.getElementById('btn-search').addEventListener('click', openPalette);
+    document.getElementById('btn-export').addEventListener('click', exportCsv);
+    document.getElementById('btn-reset').addEventListener('click', openConfirm);
+    document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+    document.getElementById('btn-execucoes').addEventListener('click', openExecucoes);
+    document.getElementById('execs-close').addEventListener('click', closeExecucoes);
+    document.getElementById('execs-backdrop').addEventListener('click', closeExecucoes);
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+    document.getElementById('confirm-ok').addEventListener('click', doReset);
+
+    // Cloud sync (não bloqueia render)
+    bootCloud();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>

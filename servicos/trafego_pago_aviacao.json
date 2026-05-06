@@ -1,0 +1,66 @@
+{
+  "id": "trafego_pago_aviacao",
+  "nome": "Tráfego Pago",
+  "nicho_alvo": "escola de aviação",
+  "descricao": "Gestão de Google Ads (Rede de Pesquisa) para Escolas de Aviação — captura alunos no exato momento em que pesquisam ativamente por formação de pilotos, gerando leads qualificados com intenção de matrícula.",
+  "ticket_inicial": 2500,
+  "ticket_recorrencia": 2000,
+  "estrategia_venda": "consultiva",
+
+  "icp": {
+    "resumo": "Sócio-proprietário ou diretor de escola de aviação (35-60 anos), dependente de indicações, com aeronaves parcialmente ociosas e dificuldade de previsibilidade nas matrículas. Quer fluxo constante de leads qualificados — alunos com perfil e poder aquisitivo para se matricular em PP ou PC.",
+    "sinais_qualificacao": {
+      "prioridade_alta": [
+        "anuncia_meta = nao",
+        "wa_ativo = true",
+        "maps_avaliacoes > 5",
+        "tem instagram"
+      ],
+      "prioridade_media": [
+        "anuncia_meta = sim (upsell/troca de agência)",
+        "wa_ativo = true"
+      ],
+      "descartar": [
+        "wa_ativo = false",
+        "sem instagram e sem site"
+      ]
+    }
+  },
+
+  "priority_score": {
+    "pesos": {
+      "wa_ativo_bonus": 15,
+      "dono_identificado_bonus": 10,
+      "maps_sem_site_bonus": 5
+    },
+    "regras": [
+      {"campo": "anuncia_meta_nao", "bonus": 25},
+      {"campo": "tem_instagram",    "bonus": 8},
+      {"campo": "maps_avaliacoes",  "operador": ">", "valor": 5,  "bonus": 10},
+      {"campo": "maps_avaliacoes",  "operador": ">", "valor": 20, "bonus": 5},
+      {"campo": "maps_nota",        "operador": ">=","valor": 4.5,"bonus": 5}
+    ]
+  },
+
+  "rapport_humano": [
+    "O Brasil tem um déficit crescente de pilotos civis e menos de 15% das escolas de aviação aparecem no Google Ads. Quando alguém pesquisa 'curso de piloto privado' ou 'escola de aviação' na sua região, quem aparece primeiro fica com a matrícula. A {nome} está nessa posição?",
+    "A {nome} tem {maps_avaliacoes} avaliações no Maps — a reputação está construída. O gargalo que a maioria das escolas enfrenta não é qualidade: é previsibilidade. A matrícula vem por indicação um mês, some no outro. Aeronave parada no pátio tem custo fixo independente de ter aluno.",
+    "Quem dirige uma escola de aviação não quer só encher a agenda uma vez — quer previsibilidade para planejar renovação de frota, contratar instrutores e crescer com segurança. Com Google Ads bem estruturado, a {nome} aparece no topo para quem já decidiu voar e está escolhendo onde se matricular."
+  ],
+
+  "gancho_dor": [
+    "[DADO DE MERCADO] Olá, {dono_primeiro_nome}! Vi a {nome} no Maps e fiquei curioso — a escola aparece no Google quando alguém pesquisa 'curso de piloto' ou 'escola de aviação' na sua região? Menos de 15% das escolas de aviação no Brasil anunciam no Google, o que significa que quem entra primeiro domina o posicionamento e captura os leads que os concorrentes deixam passar. Posso te mostrar como isso funciona na prática em 10 minutos?",
+    "[DOR] Olá, {dono_primeiro_nome}! Tenho acompanhado escolas de aviação e percebi um padrão comum: a captação depende muito de indicação — boa em meses cheios, incerta nos outros. Sem um canal previsível, a aeronave fica parada, o instrutor ocioso e o custo fixo corrói a margem — independente de quantos alunos entraram no mês anterior. Faz sentido conversar sobre como mudar esse cenário para a {nome}?",
+    "[DESEJO] Olá, {dono_primeiro_nome}! A meta de quem dirige uma escola de aviação não é só ter alunos — é ter tanta demanda qualificada que você pode escolher os melhores perfis e ainda planejar crescimento com segurança. Com Google Ads focado em busca ativa, a {nome} aparece no exato momento em que alguém decide voar e está escolhendo onde se matricular. Esse tipo de trabalho faz sentido para você?"
+  ],
+
+  "objecoes_e_respostas": {
+    "Já tentei agência e não funcionou": "A maioria das agências genéricas não entende a diferença entre um lead para Piloto Privado (PP) e Piloto Comercial (PC), nem as regulamentações da ANAC. Nossa segmentação é específica para aviação civil — palavras-chave que atraem quem tem perfil e poder aquisitivo para se matricular, não curiosos.",
+    "É muito caro": "Uma matrícula de Piloto Privado vale em média R$40.000. Uma de Comercial, R$80.000+. O investimento em gestão + verba no Google fica em torno de R$2.500/mês. Uma única matrícula paga mais de um ano de serviço.",
+    "Não quero leads sem qualidade": "Focamos na Rede de Pesquisa do Google — só aparecemos para quem já está pesquisando ativamente 'escola de aviação' ou 'curso de piloto'. São leads com intenção de compra declarada, não pessoas aleatórias interrompidas no feed.",
+    "Medo de perder o controle da conta": "Você fica com acesso administrativo total à conta do Google Ads. Nada é feito sem a sua visibilidade. Relatórios claros toda semana — você acompanha cada centavo investido.",
+    "Não tenho tempo para acompanhar": "Nossa gestão é completa: criamos os textos dos anúncios, configuramos as campanhas, otimizamos as palavras-chave negativas e entregamos relatório quinzenal em linguagem simples. Você só aprova a estratégia inicial."
+  },
+
+  "mensagem_wa_template": "Olá, {dono_primeiro_nome}! Vi que a {nome} tem presença no Maps mas provavelmente não aparece nas primeiras posições do Google quando alguém pesquisa 'curso de piloto' na sua região. Escolas de aviação que investem em Google Ads captam de 5 a 15 leads qualificados por mês — alunos que já decidiram voar e estão escolhendo onde se matricular. Posso te mostrar como funciona em 10 minutos?"
+}

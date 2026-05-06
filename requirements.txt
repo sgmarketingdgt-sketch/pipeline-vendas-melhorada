@@ -1,0 +1,8 @@
+# Invictus Prospect Template — dependências Python
+# Pin de versões testadas; ajuste conforme necessidade.
+
+requests>=2.32,<3.0
+python-dotenv>=1.0,<2.0
+playwright>=1.46,<2.0
+psycopg2-binary>=2.9,<3.0    # opcional: setup_supabase.py em modo automático
+beautifulsoup4>=4.12,<5.0    # parsing CNPJ no rodapé dos sites (fase A)
