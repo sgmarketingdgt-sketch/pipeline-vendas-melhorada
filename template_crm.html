@@ -277,7 +277,7 @@
     <button class="chip" data-filter="cnpj">CNPJ oficial</button>
     <button class="chip" data-filter="meta">Anuncia Meta</button>
     <button class="chip" data-filter="email">✉️ Com e-mail</button>
-    <button class="chip" data-filter="followupHoje">📅 Follow-up hoje</button>
+    <button class="chip" data-filter="followupHoje">Follow-up hoje</button>
     <button class="chip" data-filter="prio">Priority 70+</button>
     <div class="h-5 w-px bg-line mx-2"></div>
     <button class="chip" data-filter="gmb_alta">📍 GMB Alta</button>
@@ -1120,16 +1120,16 @@
     if (!ls || !ls.followup_start) return '';
     const fu = getFollowupStatus(leadId);
     if (!fu || fu.nextStep === null) {
-      return `<div class="fu-badge done mt-1">✅ Régua completa</div>`;
+      return `<div class="fu-badge done mt-1">Concluido</div>`;
     }
     const step = FU_STEPS.find(s => s.n === fu.nextStep);
     if (fu.overdue) {
-      return `<div class="fu-badge overdue">🔴 Etapa ${fu.nextStep} · atrasado ${fmtDate(fu.dueTs)}</div>`;
+      return `<div class="fu-badge overdue">Atrasado · Etapa ${fu.nextStep} · ${fmtDate(fu.dueTs)}</div>`;
     }
     if (fu.dueToday) {
-      return `<div class="fu-badge due">🟡 Etapa ${fu.nextStep} · hoje</div>`;
+      return `<div class="fu-badge due">Hoje · Etapa ${fu.nextStep}</div>`;
     }
-    return `<div class="fu-badge ok">📅 Etapa ${fu.nextStep} · ${fmtDate(fu.dueTs)}</div>`;
+    return `<div class="fu-badge ok">D+${step.dias} · ${fmtDate(fu.dueTs)}</div>`;
   }
 
   function getFuMessage(lead, stepN) {
@@ -1185,7 +1185,7 @@
           <div class="flex items-center justify-between gap-2 mb-1">
             <span class="text-[13px] font-semibold text-ink">Etapa ${step.n} — ${step.label}</span>
             <span class="text-[11px] text-ink-dim flex-shrink-0">
-              ${isSent ? `✅ enviado ${fmtDate(sent[step.n])}` : (dueTs ? `${fu && fu.overdue && isNext ? '🔴 atrasado · ' : ''}previsto ${fmtDate(dueTs)}` : '—')}
+              ${isSent ? `enviado em ${fmtDate(sent[step.n])}` : (dueTs ? `${fu && fu.overdue && isNext ? 'atrasado · ' : ''}previsto ${fmtDate(dueTs)}` : '—')}
             </span>
           </div>
           ${msg ? `<p id="${msgId}" class="text-[12.5px] text-ink-dim leading-relaxed mb-2 whitespace-pre-line">${esc(msg)}</p>` : ''}
