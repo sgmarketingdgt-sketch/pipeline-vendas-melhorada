@@ -313,6 +313,7 @@ def consolidar_local() -> tuple[list, dict]:
             "servicos": servicos_lead,
             "query_origem": base.get("query_origem"),
             "novo_nesta_rodada": True,
+            "data_entrada": datetime.now().strftime("%Y-%m-%d"),
         })
 
     hoje = datetime.now()
@@ -358,9 +359,19 @@ def consolidar_local() -> tuple[list, dict]:
                     nl["loss_reason"]    = el.get("loss_reason")
                     nl["supabase_id"]    = el.get("supabase_id")
                     nl["first_seen_at"]  = el.get("first_seen_at")
+                    # Preserva campos de Instagram preenchidos (manual ou automaticamente)
+                    for ig_field in (
+                        "instagram_local_url",
+                        "instagram_dono_url", "instagram_dono_nome", "instagram_dono_bio",
+                        "instagram_decisor_url", "instagram_decisor_nome", "instagram_decisor_bio",
+                    ):
+                        if el.get(ig_field):
+                            nl.setdefault(ig_field, el[ig_field])
                     nl["novo_nesta_rodada"] = False  # já existia
+                    nl["data_entrada"] = el.get("data_entrada", datetime.now().strftime("%Y-%m-%d"))
                 else:
                     nl["novo_nesta_rodada"] = True   # realmente novo
+                    nl["data_entrada"] = datetime.now().strftime("%Y-%m-%d")
 
             # Leads que existiam mas NÃO apareceram na nova extração → mantém com flag
             leads_sumidos = [

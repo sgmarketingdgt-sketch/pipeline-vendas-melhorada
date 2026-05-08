@@ -133,6 +133,12 @@
   .lead-card[data-status="ganhou"], .lead-card[data-status="perdeu"] { opacity: 0.72; }
   .lead-card[data-status="ganhou"]:hover, .lead-card[data-status="perdeu"]:hover { opacity: 1; }
   .lead-card[data-status="sem_resposta"] { opacity: 0.85; }
+  .bot-toggle { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:3px 8px; border-radius:5px; border:1px solid #2E2E2E; background:#161616; color:#525252; cursor:pointer; margin-top:5px; transition:all 140ms; }
+  .bot-toggle:hover { border-color:#404040; color:#737373; }
+  .bot-toggle.bot-1x  { background:#1C1500; border-color:rgba(245,158,11,0.4); color:#F59E0B; }
+  .bot-toggle.bot-inf { background:#1C0505; border-color:rgba(239,68,68,0.4);  color:#EF4444; }
+  .bot-email-hint { display:inline-flex; align-items:center; gap:3px; font-size:10px; color:#3B82F6; margin-top:3px; text-decoration:none; opacity:0.8; }
+  .bot-email-hint:hover { opacity:1; }
 
   /* Dossier */
   #dossier { transform: translateX(100%); transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
@@ -154,6 +160,11 @@
   .info-v { color: #F5F5F5; line-height: 1.55; font-family: Inter, sans-serif; }
   .info-v.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   .info-v.muted { color: #A3A3A3; }
+
+  /* Campos editáveis (modal de edição de lead) */
+  .edit-field { display: block; width: 100%; background: #0F0F0F; border: 1px solid #333; border-radius: 6px; color: #F5F5F5; font-size: 12px; padding: 7px 10px; outline: none; font-family: 'JetBrains Mono', monospace; transition: border-color 140ms; box-sizing: border-box; resize: vertical; }
+  .edit-field:focus { border-color: #3B82F6; }
+  .edit-field-label { display: block; font-size: 11px; color: #737373; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 
   /* Pill de acao no dossie header */
   .action-pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; font-size: 12px; font-weight: 600; background: #1E1E1E; border: 1px solid #333333; border-radius: 8px; color: #F5F5F5; transition: all 140ms; cursor: pointer; text-decoration: none; }
@@ -246,8 +257,14 @@
       <span class="flex items-center gap-1"><kbd>Ctrl</kbd><kbd>K</kbd></span>
     </button>
     <!-- Acoes -->
-    <button id="btn-export" title="Exportar CSV" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+    <button id="btn-export" title="Exportar CSV (com notas e histórico)" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button id="btn-backup" title="Backup completo (JSON)" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </button>
+    <button id="btn-funnel" title="Funil de vendas" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
     </button>
     <button id="btn-reset" title="Resetar pipeline" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -278,6 +295,7 @@
     <button class="chip" data-filter="meta">Anuncia Meta</button>
     <button class="chip" data-filter="email">✉️ Com e-mail</button>
     <button class="chip" data-filter="followupHoje">Follow-up hoje</button>
+    <button class="chip" data-filter="recentes">📅 Recentes (7d)</button>
     <button class="chip" data-filter="prio">Priority 70+</button>
     <div class="h-5 w-px bg-line mx-2"></div>
     <button class="chip" data-filter="gmb_alta">📍 GMB Alta</button>
@@ -461,6 +479,7 @@
           notes: ls.notes || [],
           activity: ls.activity || [],
           novo_nesta_rodada: stillNovoFlag,
+          overrides: ls.overrides || {},
         })
         .eq('id', supabaseId);
     } catch (e) {
@@ -512,7 +531,7 @@
   let filters = {
     naoContactados: CLOUD_MODE,   // ativo por padrão em modo cloud
     novosNestaRodada: false,
-    ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, prio: false, cidade: '', nicho: '',
+    ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, recentes: false, prio: false, cidade: '', nicho: '',
     gmb_alta: false, tp_alta: false
   };
   let searchTerm = '';
@@ -566,6 +585,18 @@
   function fmtPhone(p) { return p || '—'; }
   function fmtNow() { return new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 
+  // Retorna a melhor URL de Instagram disponível para um lead (qualquer fonte)
+  function getIgUrl(lead) {
+    const ov = (state.leads[lead.id] && state.leads[lead.id].overrides) || {};
+    return (
+      ov.instagram_local_url  ||
+      lead.instagram_local_url ||
+      (lead.instagram && lead.instagram.url) ||
+      ''
+    );
+  }
+  function hasInstagram(lead) { return getIgUrl(lead).startsWith('http'); }
+
   // ==========================================================================
   // FILTRO + SEARCH
   // ==========================================================================
@@ -582,14 +613,20 @@
     // Cidade
     if (filters.cidade && lead.cidade !== filters.cidade) return false;
     // Chips
-    const ig = (lead.instagram && lead.instagram.url || '').startsWith('http');
-    if (filters.ig && !ig) return false;
+    if (filters.ig && !hasInstagram(lead)) return false;
     if (filters.wa && !lead.whatsapp_ativo) return false;
     if (filters.dono && !lead.dono) return false;
     if (filters.cnpj && !lead.cnpj) return false;
     if (filters.meta && lead.anuncia_meta !== 'sim') return false;
     if (filters.email && !lead.email) return false;
+    if (filters.recentes) {
+      if (!lead.data_entrada) return false;
+      const sete = new Date(); sete.setDate(sete.getDate() - 7);
+      if (new Date(lead.data_entrada) < sete) return false;
+    }
     if (filters.followupHoje) {
+      const ls = state.leads[lead.id];
+      if (!ls || CONCLUDED_STATUSES.includes(ls.status)) return false;
       const fu = getFollowupStatus(lead.id);
       if (!fu || fu.nextStep === null || fu.nextStep > 4) return false;
       if (!fu.dueToday) return false;
@@ -644,7 +681,7 @@
   }
 
   function renderCard(lead) {
-    const ig = (lead.instagram && lead.instagram.url || '').startsWith('http');
+    const ig = hasInstagram(lead);
     const wa = lead.whatsapp_ativo;
     const meta = lead.anuncia_meta === 'sim';
     const google = lead.anuncia_google === 'sim';
@@ -654,7 +691,9 @@
     const bairroCurto = (lead.bairro || '').split(',')[0].split(';')[0].trim().slice(0, 40);
     const status = state.leads[lead.id].status;
 
-    const ehNovo   = CLOUD_MODE && !!lead.novo_nesta_rodada;
+    const dataEntrada    = lead.data_entrada || '';
+    const dataEntradaFmt = dataEntrada ? dataEntrada.slice(8,10) + '/' + dataEntrada.slice(5,7) : '';
+    const ehNovo   = status === 'novo' && !!dataEntrada;
     const ehSumido = !!lead.nao_visto_nesta_rodada;
     return `
     <article class="lead-card" data-lead-id="${lead.id}" data-status="${status}" ${ehSumido ? 'style="opacity:0.55"' : ''}>
@@ -688,8 +727,19 @@
         ${meta ? `<span class="badge st-abordado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M22 12C22 6.477 17.523 2 12 2S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>Meta</span>` : ''}
         ${google ? `<span class="badge st-agendado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z"/></svg>Google</span>` : ''}
       </div>
+      ${!ehNovo && dataEntradaFmt ? `<span style="font-size:10px;color:#2A2A2A;display:block;margin-top:4px">entrou ${dataEntradaFmt}</span>` : ''}
       ${renderCardFollowupBadge(lead.id)}
-      ${state.leads[lead.id].status === 'perdeu' && state.leads[lead.id].loss_reason ? `<div class="loss-reason">↳ ${esc(state.leads[lead.id].loss_reason)}</div>` : ''}
+      ${status === 'respondeu' ? (() => {
+        const botVal = state.leads[lead.id].is_bot || null;
+        const m = mergeOverrides(lead);
+        const email = m.email || lead.email || '';
+        const btnClass = botVal === '1x' ? ' bot-1x' : botVal === 'infinito' ? ' bot-inf' : '';
+        const btnLabel = botVal === '1x' ? '🤖 Bot 1x' : botVal === 'infinito' ? '🤖 Bot ∞' : '🤖 Bot?';
+        const btnTitle = botVal === '1x' ? 'Bot 1ª msg — clique para Bot ∞' : botVal === 'infinito' ? 'Bot infinito — clique para remover' : 'Clique para marcar como bot';
+        const emailHint = (botVal === 'infinito' && email) ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()" class="bot-email-hint" title="Tentar por e-mail">→ ${esc(email)}</a>` : '';
+        return `<div><button onclick="event.stopPropagation();toggleBot(${lead.id})" class="bot-toggle${btnClass}" title="${btnTitle}">${btnLabel}</button>${emailHint}</div>`;
+      })() : ''}
+      ${status === 'perdeu' && state.leads[lead.id].loss_reason ? `<div class="loss-reason">↳ ${esc(state.leads[lead.id].loss_reason)}</div>` : ''}
     </article>
     `;
   }
@@ -759,12 +809,13 @@
 
   function renderDossierHead(lead) {
     const statusObj = STATUSES.find(s => s.id === state.leads[lead.id].status);
+    const m = mergeOverrides(lead);
     const wa = lead.whatsapp_wa_me;
-    const site = lead.site;
+    const site = m.site || lead.site;
     const maps = lead.maps_url;
-    const ig = (lead.instagram && lead.instagram.url || '');
+    const ig = m.instagram_local_url || (lead.instagram && lead.instagram.url || '');
     const igOk = ig.startsWith('http');
-    const dono = lead.dono;
+    const dono = m.dono || lead.dono;
     const fonte = lead.dono_fonte;
     const fonteLabel = ({cnpj: 'via CNPJ', linkedin: 'via LinkedIn', maps: 'via Google Maps', site: 'via site', instagram: 'via Instagram'})[fonte] || fonte;
 
@@ -831,14 +882,33 @@
     initDossierInteractions(lead);
   }
 
+  // Mescla dados originais do lead com overrides manuais salvos no estado
+  function mergeOverrides(lead) {
+    const ov = (state.leads[lead.id] && state.leads[lead.id].overrides) || {};
+    const m = { ...lead };
+    if (ov.telefone)           m.telefone = ov.telefone;
+    if (ov.email)              m.email    = ov.email;
+    if (ov.site)               m.site     = ov.site;
+    if (ov.dono)               m.dono     = ov.dono;
+    m.instagram_local_url    = ov.instagram_local_url    || (lead.instagram && lead.instagram.url) || '';
+    m.instagram_dono_url     = ov.instagram_dono_url     || lead.instagram_dono_url     || '';
+    m.instagram_dono_bio     = ov.instagram_dono_bio     || lead.instagram_dono_bio     || '';
+    m.instagram_dono_nome    = ov.instagram_dono_nome    || lead.instagram_dono_nome    || '';
+    m.instagram_decisor_url  = ov.instagram_decisor_url  || lead.instagram_decisor_url  || '';
+    m.instagram_decisor_bio  = ov.instagram_decisor_bio  || lead.instagram_decisor_bio  || '';
+    m.instagram_decisor_nome = ov.instagram_decisor_nome || lead.instagram_decisor_nome || '';
+    return m;
+  }
+
   function renderTabGeral(l) {
+    const m = mergeOverrides(l);
     const wa = l.whatsapp_numero;
     return `
     <section class="mb-6">
       <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Contato</h3>
       <div class="info-row">
         <span class="info-k">Telefone</span>
-        <span class="info-v mono">${esc(fmtPhone(l.telefone))}</span>
+        <span class="info-v mono">${esc(fmtPhone(m.telefone))}</span>
       </div>
       <div class="info-row">
         <span class="info-k">WhatsApp</span>
@@ -852,9 +922,9 @@
       <div class="info-row">
         <span class="info-k">E-mail</span>
         <span class="info-v flex items-center gap-2 flex-wrap">
-          ${l.email ? `
-            <a href="mailto:${esc(l.email)}" class="text-accent hover:underline mono text-[12px]">${esc(l.email)}</a>
-            <button class="copy-btn text-[10px] px-2 py-0.5 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover" data-copy="${esc(l.email)}">copiar</button>
+          ${m.email ? `
+            <a href="mailto:${esc(m.email)}" class="text-accent hover:underline mono text-[12px]">${esc(m.email)}</a>
+            <button class="copy-btn text-[10px] px-2 py-0.5 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover" data-copy="${esc(m.email)}">copiar</button>
             ${l.email_fonte === 'registrobr_rdap' ? `<span class="badge st-ganhou text-[9px]">WHOIS</span>` : ''}
             ${l.email_fonte === 'site_scraping'    ? `<span class="badge bg-sky-500/10 text-sky-400 border-sky-500/30 text-[9px]">site</span>` : ''}
             ${l.email_fonte === 'cnpj_receita'     ? `<span class="badge bg-violet-500/10 text-violet-400 border-violet-500/30 text-[9px]">CNPJ</span>` : ''}
@@ -868,7 +938,49 @@
       </div>
       <div class="info-row">
         <span class="info-k">Site</span>
-        <span class="info-v muted">${l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener" class="text-accent hover:underline break-all">${esc(l.site)}</a>` : '—'}</span>
+        <span class="info-v muted">${m.site ? `<a href="${esc(m.site)}" target="_blank" rel="noopener" class="text-accent hover:underline break-all">${esc(m.site)}</a>` : '—'}</span>
+      </div>
+    </section>
+
+    <section class="mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded">Instagram</h3>
+        <button onclick="openEditModal(${l.id})" class="text-[11px] text-accent hover:text-blue-300 font-semibold flex items-center gap-1 transition-colors">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar dados
+        </button>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Local</span>
+        <span class="info-v">
+          ${m.instagram_local_url
+            ? `<a href="${esc(m.instagram_local_url)}" target="_blank" rel="noopener" class="text-accent hover:underline mono text-[12px]">${esc(m.instagram_local_url.replace(/https?:\/\/(www\.)?instagram\.com\//,'@').replace(/\/$/,''))}</a>`
+            : '<span class="text-ink-dim">—</span>'}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Dono / CEO</span>
+        <span class="info-v">
+          ${(m.instagram_dono_url || m.instagram_dono_nome) ? `
+            <div>
+              ${m.instagram_dono_url ? `<a href="${esc(m.instagram_dono_url)}" target="_blank" rel="noopener" class="text-accent hover:underline mono text-[12px]">${esc(m.instagram_dono_url.replace(/https?:\/\/(www\.)?instagram\.com\//,'@').replace(/\/$/,''))}</a>` : ''}
+              ${m.instagram_dono_nome ? `<span class="text-ink-dim text-[12px] ml-1">· ${esc(m.instagram_dono_nome)}</span>` : ''}
+              ${m.instagram_dono_bio  ? `<p class="text-[12px] text-ink-muted mt-1.5 leading-relaxed italic border-l-2 border-line pl-2">${esc(m.instagram_dono_bio)}</p>` : ''}
+            </div>
+          ` : '<span class="text-ink-dim">—</span>'}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-k">Decisor</span>
+        <span class="info-v">
+          ${(m.instagram_decisor_url || m.instagram_decisor_nome) ? `
+            <div>
+              ${m.instagram_decisor_url ? `<a href="${esc(m.instagram_decisor_url)}" target="_blank" rel="noopener" class="text-accent hover:underline mono text-[12px]">${esc(m.instagram_decisor_url.replace(/https?:\/\/(www\.)?instagram\.com\//,'@').replace(/\/$/,''))}</a>` : ''}
+              ${m.instagram_decisor_nome ? `<span class="text-ink-dim text-[12px] ml-1">· ${esc(m.instagram_decisor_nome)}</span>` : ''}
+              ${m.instagram_decisor_bio  ? `<p class="text-[12px] text-ink-muted mt-1.5 leading-relaxed italic border-l-2 border-line pl-2">${esc(m.instagram_decisor_bio)}</p>` : ''}
+            </div>
+          ` : '<span class="text-ink-dim">—</span>'}
+        </span>
       </div>
     </section>
 
@@ -1068,6 +1180,7 @@
     'Já tem fornecedor/agência',
     'Preço / orçamento',
     'Não é o decisor',
+    'Empresa inativa ou encerrada',
     'Outro',
   ];
 
@@ -1115,9 +1228,15 @@
     };
   }
 
+  const CONCLUDED_STATUSES = ['ganhou', 'perdeu', 'agendado'];
+
   function renderCardFollowupBadge(leadId) {
     const ls = state.leads[leadId];
     if (!ls || !ls.followup_start) return '';
+    if (CONCLUDED_STATUSES.includes(ls.status)) return '';
+    if (ls.status === 'respondeu' && ls.is_bot) {
+      return `<div class="fu-badge" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);color:#60A5FA;margin-top:5px">→ Tentar outro canal</div>`;
+    }
     const fu = getFollowupStatus(leadId);
     if (!fu || fu.nextStep === null) {
       return `<div class="fu-badge done mt-1">Concluido</div>`;
@@ -1156,6 +1275,46 @@
   function renderTabFollowup(lead) {
     const ls = state.leads[lead.id];
     if (!ls) return '';
+
+    if (ls.status === 'ganhou' || ls.status === 'perdeu') {
+      return `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
+        <p class="text-[13px] text-ink-dim italic">Lead concluído — follow-up encerrado.</p>
+      </section>`;
+    }
+    if (ls.status === 'agendado') {
+      return `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
+        <p class="text-[13px] text-ink-dim italic">Reunião agendada — aguardando próxima etapa.</p>
+      </section>`;
+    }
+
+    if (ls.is_bot && ls.status === 'respondeu') {
+      const m = mergeOverrides(lead);
+      const email  = m.email  || lead.email  || '';
+      const igUrl  = getIgUrl(lead);
+      const botLabel = ls.is_bot === 'infinito' ? 'Bot infinito' : 'Bot 1ª mensagem';
+      return `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
+        <div style="background:#0F0F0F;border:1px solid #1E1E1E;border-radius:10px;padding:14px 16px">
+          <p style="font-size:12px;color:#F59E0B;font-weight:600;margin:0 0 10px">🤖 ${botLabel} identificado</p>
+          <p style="font-size:12px;color:#737373;margin:0 0 12px">WhatsApp e Direct do Instagram provavelmente automatizados. Tente por outro canal:</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${email
+              ? `<a href="mailto:${esc(email)}" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#3B82F6;text-decoration:none">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+                  ${esc(email)}</a>`
+              : `<span style="font-size:12px;color:#404040;font-style:italic">Sem e-mail cadastrado — adicione em Editar dados</span>`}
+            ${igUrl
+              ? `<a href="${esc(igUrl)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;font-size:12px;color:#A78BFA;text-decoration:none">
+                  <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                  Instagram do local</a>`
+              : ''}
+          </div>
+        </div>
+      </section>`;
+    }
+
     const fu = getFollowupStatus(lead.id);
     const sent = (ls.followup_sent || {});
     const baseTs = ls.followup_start;
@@ -1211,6 +1370,27 @@
       const btn = el.closest('.fu-step')?.querySelector('button');
       if (btn) { const orig = btn.innerText; btn.innerText = '✓ Copiado!'; setTimeout(() => btn.innerText = orig, 2000); }
     });
+  }
+
+  function toggleBot(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls) return;
+    // Ciclo: null → '1x' → 'infinito' → null
+    const cycle = { null: '1x', '1x': 'infinito', 'infinito': null };
+    const prev = ls.is_bot || null;
+    ls.is_bot = cycle[String(prev)] ?? null;
+    ls.activity = ls.activity || [];
+    const msg = ls.is_bot === '1x'       ? 'Marcado como bot (1ª mensagem)'
+               : ls.is_bot === 'infinito' ? 'Marcado como bot infinito'
+               :                            'Marcador de bot removido';
+    ls.activity.unshift({ t: Date.now(), type: 'bot', msg });
+    saveState();
+    cloudUpsertLead(leadId);
+    renderKanban();
+    const toastMsg = ls.is_bot === '1x'       ? '🤖 Bot 1ª mensagem'
+                   : ls.is_bot === 'infinito'  ? '🤖 Bot infinito — tente por e-mail'
+                   :                             'Marcador de bot removido';
+    toast(toastMsg);
   }
 
   function markFuSent(leadId, stepN) {
@@ -1315,6 +1495,157 @@
       if (afterFn) afterFn();
       renderKanban();
     });
+  }
+
+  // ==========================================================================
+  // EDIÇÃO MANUAL DE CAMPOS DO LEAD
+  // ==========================================================================
+  function openEditModal(leadId) {
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const m = mergeOverrides(lead);
+
+    document.getElementById('edit-modal-overlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'edit-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;background:rgba(0,0,0,0.78);backdrop-filter:blur(4px);overflow-y:auto';
+    overlay.innerHTML = `
+      <div style="background:#141414;border:1px solid #262626;border-radius:16px;padding:28px;width:520px;max-width:100%;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;color:#F5F5F5;margin:0 0 2px">${esc(lead.nome)}</h3>
+            <p style="font-size:11px;color:#525252;margin:0;text-transform:uppercase;letter-spacing:0.08em">Editar dados do lead</p>
+          </div>
+          <button id="emc-close" style="color:#737373;background:transparent;border:none;cursor:pointer;font-size:20px;line-height:1;padding:4px">✕</button>
+        </div>
+
+        <div style="border-top:1px solid #1E1E1E;padding-top:18px;margin-bottom:20px">
+          <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:6px">Funil · histórico manual</p>
+          <p style="font-size:11px;color:#525252;margin-bottom:12px">Preencha apenas para leads abordados antes do sistema de atividade existir. Leads novos são rastreados automaticamente.</p>
+          <div>
+            <label class="edit-field-label">Etapa máxima atingida por este lead</label>
+            <select id="ef-max-stage" class="edit-field">
+              <option value="">— automático (usa histórico de atividade)</option>
+              <option value="abordado"  ${(state.leads[leadId]?.overrides?.max_stage||'') === 'abordado'  ? 'selected' : ''}>Abordado (recebeu a mensagem)</option>
+              <option value="engajado"  ${(state.leads[leadId]?.overrides?.max_stage||'') === 'engajado'  ? 'selected' : ''}>Engajado (respondeu)</option>
+              <option value="reuniao"   ${(state.leads[leadId]?.overrides?.max_stage||'') === 'reuniao'   ? 'selected' : ''}>Reunião agendada</option>
+              <option value="fechado"   ${(state.leads[leadId]?.overrides?.max_stage||'') === 'fechado'   ? 'selected' : ''}>Fechado (ganhou)</option>
+            </select>
+          </div>
+        </div>
+
+        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Contato</p>
+        <div style="display:grid;gap:12px;margin-bottom:20px">
+          <div>
+            <label class="edit-field-label">Telefone</label>
+            <input id="ef-tel" class="edit-field" value="${esc(m.telefone || '')}" placeholder="${esc(lead.telefone || '')}">
+          </div>
+          <div>
+            <label class="edit-field-label">E-mail</label>
+            <input id="ef-email" class="edit-field" type="email" value="${esc(m.email || '')}" placeholder="${esc(lead.email || 'sem e-mail detectado')}">
+          </div>
+          <div>
+            <label class="edit-field-label">Site</label>
+            <input id="ef-site" class="edit-field" value="${esc(m.site || '')}" placeholder="${esc(lead.site || 'sem site')}">
+          </div>
+          <div>
+            <label class="edit-field-label">Nome do dono</label>
+            <input id="ef-dono" class="edit-field" value="${esc(m.dono || '')}" placeholder="${esc(lead.dono || 'desconhecido')}">
+          </div>
+        </div>
+
+        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Instagram</p>
+        <div style="display:grid;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="edit-field-label">Instagram do local (URL)</label>
+            <input id="ef-ig-local" class="edit-field" value="${esc(m.instagram_local_url || '')}" placeholder="https://instagram.com/nomedapagina">
+          </div>
+        </div>
+
+        <div style="background:#0F0F0F;border:1px solid #1E1E1E;border-radius:10px;padding:14px;margin-bottom:12px">
+          <p style="font-size:11px;font-weight:600;color:#A3A3A3;margin:0 0 12px">Dono / CEO</p>
+          <div style="display:grid;gap:10px">
+            <div>
+              <label class="edit-field-label">Instagram (URL)</label>
+              <input id="ef-ig-dono-url" class="edit-field" value="${esc(m.instagram_dono_url || '')}" placeholder="https://instagram.com/...">
+            </div>
+            <div>
+              <label class="edit-field-label">Nome exibido no Instagram</label>
+              <input id="ef-ig-dono-nome" class="edit-field" value="${esc(m.instagram_dono_nome || '')}" placeholder="Ex: Cristiano Nascimento">
+            </div>
+            <div>
+              <label class="edit-field-label">Bio</label>
+              <textarea id="ef-ig-dono-bio" class="edit-field" rows="2" placeholder="Cole a bio do perfil aqui...">${esc(m.instagram_dono_bio || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#0F0F0F;border:1px solid #1E1E1E;border-radius:10px;padding:14px;margin-bottom:24px">
+          <p style="font-size:11px;font-weight:600;color:#A3A3A3;margin:0 0 12px">Decisor / Marketing</p>
+          <div style="display:grid;gap:10px">
+            <div>
+              <label class="edit-field-label">Instagram (URL)</label>
+              <input id="ef-ig-dec-url" class="edit-field" value="${esc(m.instagram_decisor_url || '')}" placeholder="https://instagram.com/...">
+            </div>
+            <div>
+              <label class="edit-field-label">Nome exibido no Instagram</label>
+              <input id="ef-ig-dec-nome" class="edit-field" value="${esc(m.instagram_decisor_nome || '')}" placeholder="Ex: Juliano Albino Santos">
+            </div>
+            <div>
+              <label class="edit-field-label">Bio</label>
+              <textarea id="ef-ig-dec-bio" class="edit-field" rows="2" placeholder="Cole a bio do perfil aqui...">${esc(m.instagram_decisor_bio || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="emc-cancel" style="padding:9px 18px;border-radius:8px;border:1px solid #333;background:transparent;color:#A3A3A3;font-size:13px;cursor:pointer">Cancelar</button>
+          <button id="emc-save" style="padding:9px 22px;border-radius:8px;border:none;background:#3B82F6;color:white;font-size:13px;font-weight:600;cursor:pointer">Salvar</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    document.getElementById('emc-close').addEventListener('click', () => overlay.remove());
+    document.getElementById('emc-cancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('emc-save').addEventListener('click', () => saveLeadEdit(leadId));
+  }
+
+  function saveLeadEdit(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls) return;
+    ls.overrides = ls.overrides || {};
+
+    const get = id => (document.getElementById(id)?.value || '').trim();
+
+    ls.overrides.telefone             = get('ef-tel');
+    ls.overrides.email                = get('ef-email');
+    ls.overrides.site                 = get('ef-site');
+    ls.overrides.dono                 = get('ef-dono');
+    ls.overrides.instagram_local_url  = get('ef-ig-local');
+    ls.overrides.instagram_dono_url   = get('ef-ig-dono-url');
+    ls.overrides.instagram_dono_nome  = get('ef-ig-dono-nome');
+    ls.overrides.instagram_dono_bio   = get('ef-ig-dono-bio');
+    ls.overrides.instagram_decisor_url  = get('ef-ig-dec-url');
+    ls.overrides.instagram_decisor_nome = get('ef-ig-dec-nome');
+    ls.overrides.instagram_decisor_bio  = get('ef-ig-dec-bio');
+    ls.overrides.max_stage              = get('ef-max-stage');
+
+    ls.activity = ls.activity || [];
+    ls.activity.unshift({ t: Date.now(), type: 'edit', msg: 'Dados do lead editados manualmente' });
+
+    saveState();
+    cloudUpsertLead(leadId);
+
+    document.getElementById('edit-modal-overlay')?.remove();
+
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    if (lead) {
+      renderDossierHead(lead);
+      renderDossierBody(lead);
+    }
+    renderKanban();
+    toast('Dados salvos');
   }
 
   function copyGancho(id) {
@@ -1554,25 +1885,35 @@
   // EXPORT CSV
   // ==========================================================================
   function exportCsv() {
-    const headers = ['id','nome','dono','cnpj','cidade','bairro','telefone','whatsapp','wa_ativo','instagram','site','email','status','notas','score_prioridade'];
+    const headers = ['id','segmento','nome','dono','cnpj','cidade','bairro','telefone','whatsapp','wa_ativo','instagram','site','email','status','motivo_perda','notas','historico_atividade','follow_up_inicio','score_prioridade'];
     const rows = LEADS.leads.map(l => {
       const s = state.leads[l.id];
-      const notes = (s.notes || []).map(n => n.text).join(' | ').replace(/"/g, '""');
+      const m = mergeOverrides(l);
+      const notes    = (s.notes    || []).map(n => n.text || '').join(' | ');
+      const activity = (s.activity || []).map(a => {
+        const d = new Date(a.t).toLocaleDateString('pt-BR');
+        return `[${d}] ${a.msg || ''}`;
+      }).join(' | ');
+      const fuStart = s.followup_start ? new Date(s.followup_start).toLocaleDateString('pt-BR') : '';
       return [
         l.id,
+        l.segmento || '',
         l.nome || '',
-        l.dono || '',
+        m.dono || '',
         l.cnpj || '',
         l.cidade || '',
         (l.bairro || '').split(',')[0],
-        l.telefone || '',
+        m.telefone || '',
         l.whatsapp_numero || '',
         l.whatsapp_ativo ? 'sim' : 'nao',
-        (l.instagram && l.instagram.url) || '',
-        l.site || '',
-        l.email || '',
+        m.instagram_local_url || (l.instagram && l.instagram.url) || '',
+        m.site || '',
+        m.email || '',
         STATUSES.find(st => st.id === s.status)?.label || 'Novo',
+        s.loss_reason || '',
         notes,
+        activity,
+        fuStart,
         Math.round(l.priority_score || 0),
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
     });
@@ -1580,10 +1921,241 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `ethos-crm-leads-${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = url; a.download = `crm-backup-${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast('CSV exportado');
+    toast('CSV exportado com notas e hist\u00f3rico');
+  }
+
+  // ==========================================================================
+  // FUNIL DE VENDAS
+  // ==========================================================================
+
+  // Ordem dos degraus do funil (crescente)
+  const FUNNEL_ORDER = ['abordado', 'engajado', 'reuniao', 'fechado'];
+
+  // Mapeamento de status do kanban para degrau do funil
+  const KANBAN_TO_FUNNEL = {
+    abordado:     'abordado',
+    sem_resposta: 'abordado',
+    respondeu:    'engajado',
+    agendado:     'reuniao',
+    ganhou:       'fechado',
+    perdeu:       null,  // determinado pelo histórico ou override
+  };
+
+  // Percentuais de referência fornecidos (médias de mercado)
+  const FUNNEL_REFS = { engajado: 60, reuniao: 25, fechado: 33 };
+
+  // Retorna o degrau máximo do funil que um lead atingiu
+  function getMaxStageFunnel(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls) return null;
+    const currentStatus = ls.status || 'novo';
+    if (currentStatus === 'novo') return null;
+
+    // 1. Override manual tem prioridade
+    if (ls.overrides?.max_stage) return ls.overrides.max_stage;
+
+    // 2. Bot em "respondeu" → trava em abordado, sem varrer histórico
+    const isBotRespondeu = (ls.is_bot === '1x' || ls.is_bot === 'infinito') && currentStatus === 'respondeu';
+    if (isBotRespondeu) return 'abordado';
+
+    // 3. Mapeia status atual
+    let maxFunnel = KANBAN_TO_FUNNEL[currentStatus] || null;
+
+    // 4. Varre histórico de atividade em busca de etapas mais altas
+    const activity = ls.activity || [];
+    for (const act of activity) {
+      const msg = act.msg || '';
+      const match = msg.match(/para (.+)$/);
+      if (!match) continue;
+      const stageName = match[1].trim();
+      const kanbanStage = STATUSES.find(s => s.label === stageName)?.id;
+      const funnelStage = kanbanStage ? KANBAN_TO_FUNNEL[kanbanStage] : null;
+      if (!funnelStage) continue;
+      const curIdx = maxFunnel ? FUNNEL_ORDER.indexOf(maxFunnel) : -1;
+      const newIdx = FUNNEL_ORDER.indexOf(funnelStage);
+      if (newIdx > curIdx) maxFunnel = funnelStage;
+    }
+
+    return maxFunnel;
+  }
+
+  // Calcula contagens por degrau (cada lead conta em todos os degraus que atingiu)
+  function calcFunnel() {
+    const counts = { abordado: 0, engajado: 0, reuniao: 0, fechado: 0 };
+    LEADS.leads.forEach(l => {
+      const maxStage = getMaxStageFunnel(l.id);
+      if (!maxStage) return;
+      const maxIdx = FUNNEL_ORDER.indexOf(maxStage);
+      FUNNEL_ORDER.forEach((stage, idx) => { if (idx <= maxIdx) counts[stage]++; });
+    });
+    return counts;
+  }
+
+  // Agrupa perdas por degrau e motivo
+  function calcLossByStage() {
+    const byStage = {};
+    FUNNEL_ORDER.forEach(s => { byStage[s] = {}; });
+    LEADS.leads.forEach(l => {
+      const ls = state.leads[l.id];
+      if (!ls || ls.status !== 'perdeu') return;
+      const maxStage = getMaxStageFunnel(l.id) || 'abordado';
+      const reason = ls.loss_reason || 'Não informado';
+      byStage[maxStage][reason] = (byStage[maxStage][reason] || 0) + 1;
+    });
+    return byStage;
+  }
+
+  function openFunnelModal() {
+    document.getElementById('funnel-modal-overlay')?.remove();
+
+    const counts = calcFunnel();
+    const lossByStage = calcLossByStage();
+    const totalPerdidos = LEADS.leads.filter(l => state.leads[l.id]?.status === 'perdeu').length;
+    const bot1x  = LEADS.leads.filter(l => state.leads[l.id]?.is_bot === '1x'       && state.leads[l.id]?.status === 'respondeu').length;
+    const botInf = LEADS.leads.filter(l => state.leads[l.id]?.is_bot === 'infinito' && state.leads[l.id]?.status === 'respondeu').length;
+    const totalBots = bot1x + botInf;
+
+    // Contagem global de motivos de perda
+    const reasonTotals = {};
+    LEADS.leads.forEach(l => {
+      const ls = state.leads[l.id];
+      if (!ls || ls.status !== 'perdeu') return;
+      const r = ls.loss_reason || 'Não informado';
+      reasonTotals[r] = (reasonTotals[r] || 0) + 1;
+    });
+    const sortedReasons = Object.entries(reasonTotals).sort((a, b) => b[1] - a[1]);
+
+    const STAGE_META = [
+      { id: 'abordado', label: 'Abordados',        sub: 'saíram do Novo',         prev: null },
+      { id: 'engajado', label: 'Engajados',         sub: 'responderam',            prev: 'abordado' },
+      { id: 'reuniao',  label: 'Reuniões',          sub: 'agendaram',              prev: 'engajado' },
+      { id: 'fechado',  label: 'Fechados',          sub: 'ganharam',               prev: 'reuniao' },
+    ];
+
+    const maxCount = counts.abordado || 1;
+
+    function stageBlock(s) {
+      const count = counts[s.id] || 0;
+      const pct   = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+      const barW  = pct;
+
+      let convBlock = '';
+      if (s.prev) {
+        const prevCount = counts[s.prev] || 0;
+        const conv = prevCount > 0 ? Math.round((count / prevCount) * 100) : 0;
+        const ref  = FUNNEL_REFS[s.id] || 0;
+        const col  = prevCount === 0 ? '#525252' : conv >= ref ? '#10B981' : conv >= ref * 0.6 ? '#F59E0B' : '#EF4444';
+        const refLabel = ref > 0 ? `ref. mercado: ${ref}%` : '';
+        convBlock = `
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0 5px 18px;border-left:2px solid #1E1E1E;margin-left:8px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <span style="font-size:14px;font-weight:700;color:${col}">${prevCount < 3 ? '—' : conv + '%'}</span>
+            ${refLabel ? `<span style="font-size:11px;color:#404040">${refLabel}</span>` : ''}
+          </div>`;
+
+        // Perdas nesta transição
+        const lossHere = lossByStage[s.prev] || {};
+        const lossTotal = Object.values(lossHere).reduce((a, b) => a + b, 0);
+        if (lossTotal > 0) {
+          const lossItems = Object.entries(lossHere).sort((a,b)=>b[1]-a[1])
+            .map(([r, n]) => `<span style="font-size:11px;color:#737373">${esc(r)} <strong style="color:#F87171">${n}</strong></span>`)
+            .join('<span style="color:#333;margin:0 4px">·</span>');
+          convBlock += `
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px 0 4px 18px;border-left:2px solid #1E1E1E;margin-left:8px">
+              <span style="font-size:10px;color:#525252;text-transform:uppercase;letter-spacing:0.06em;margin-right:4px">perdas:</span>
+              ${lossItems}
+            </div>`;
+        }
+      }
+
+      return `${convBlock}
+        <div style="background:#1A1A1A;border:1px solid #262626;border-radius:10px;padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <span style="font-size:13px;font-weight:600;color:#F5F5F5">${s.label}</span>
+              <span style="font-size:11px;color:#525252;margin-left:6px">${s.sub}</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+              <span style="font-size:22px;font-weight:700;color:#F5F5F5;font-variant-numeric:tabular-nums;letter-spacing:-0.02em">${count}</span>
+              <span style="font-size:12px;color:#737373">${pct}%</span>
+              ${s.id === 'engajado' && totalBots > 0 ? (() => {
+                const parts = [];
+                if (bot1x  > 0) parts.push(`${bot1x}×1x`);
+                if (botInf > 0) parts.push(`${botInf}×∞`);
+                return `<span style="font-size:10px;color:#525252;margin-left:2px">+ <span style="color:#F59E0B">${totalBots} bot${totalBots > 1 ? 's' : ''}</span> <span style="color:#3A3A3A">(${parts.join(' · ')})</span></span>`;
+              })() : ''}
+            </div>
+          </div>
+          <div style="background:#0F0F0F;border-radius:4px;height:5px;overflow:hidden">
+            <div style="background:#3B82F6;height:100%;width:${barW}%;border-radius:4px"></div>
+          </div>
+        </div>`;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'funnel-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);overflow-y:auto';
+    overlay.innerHTML = `
+      <div style="background:#141414;border:1px solid #262626;border-radius:16px;padding:28px;width:480px;max-width:100%;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;color:#F5F5F5;margin:0 0 3px">Funil de Vendas</h3>
+            <p style="font-size:11px;color:#525252;margin:0">${counts.abordado} leads abordados · ${totalPerdidos} perdidos · ${counts.fechado} fechados</p>
+          </div>
+          <button id="fnl-close" style="color:#737373;background:transparent;border:none;cursor:pointer;font-size:20px;line-height:1;padding:4px">✕</button>
+        </div>
+
+        ${counts.abordado === 0
+          ? `<p style="font-size:13px;color:#525252;text-align:center;padding:32px 0">Nenhum lead abordado ainda.<br><span style="font-size:12px">O funil será preenchido conforme você avança os contatos no kanban.</span></p>`
+          : `<div style="display:flex;flex-direction:column;gap:0">${STAGE_META.map(s => stageBlock(s)).join('')}</div>`
+        }
+
+        ${sortedReasons.length > 0 ? `
+        <div style="border-top:1px solid #1E1E1E;margin-top:22px;padding-top:20px">
+          <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:14px">Motivos de perda · ${totalPerdidos} leads</p>
+          <div style="display:grid;gap:10px">
+            ${sortedReasons.map(([reason, count]) => {
+              const pct = Math.round(count / totalPerdidos * 100);
+              return `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <span style="font-size:12px;color:#A3A3A3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(reason)}</span>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                  <div style="background:#1E1E1E;border-radius:3px;height:4px;width:60px;overflow:hidden">
+                    <div style="background:#EF4444;height:100%;width:${pct}%;border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:12px;font-weight:600;color:#F5F5F5;min-width:14px;text-align:right">${count}</span>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+        <p style="font-size:11px;color:#2E2E2E;margin-top:18px;text-align:center;line-height:1.5">Para leads históricos, abra "Editar dados" e defina a etapa máxima atingida.</p>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    document.getElementById('fnl-close').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  // Backup completo do estado em JSON (inclui status, notas, atividade, follow-up, overrides)
+  function exportBackupJson() {
+    const backup = {
+      exportado_em: new Date().toISOString(),
+      versao: 1,
+      state: state,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crm-backup-completo-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Backup completo salvo');
   }
 
   // ==========================================================================
@@ -1649,14 +2221,14 @@
     const all = LEADS.leads;
     const n_wa = all.filter(l => l.whatsapp_ativo).length;
     const n_dono = all.filter(l => l.dono).length;
-    const n_ig = all.filter(l => (l.instagram && l.instagram.url || '').startsWith('http')).length;
+    const n_ig = all.filter(l => hasInstagram(l)).length;
     const n_cnpj = all.filter(l => l.cnpj).length;
     const stats = [
       { k: 'Total', v: all.length, c: '' },
       { k: 'WhatsApp real', v: n_wa, c: '#10B981' },
       { k: 'Com dono', v: n_dono, c: '#3B82F6' },
-      { k: 'Em follow-up', v: LEADS.leads.filter(l => state.leads[l.id]?.followup_start && getFollowupStatus(l.id)?.nextStep).length, c: '#3B82F6' },
-      { k: 'Follow-up hoje', v: LEADS.leads.filter(l => { const fu = getFollowupStatus(l.id); return fu && (fu.dueToday || fu.overdue) && fu.nextStep; }).length, c: '#FBBF24' },
+      { k: 'Em follow-up', v: LEADS.leads.filter(l => { const s = state.leads[l.id]; return s?.followup_start && !CONCLUDED_STATUSES.includes(s.status) && getFollowupStatus(l.id)?.nextStep; }).length, c: '#3B82F6' },
+      { k: 'Follow-up hoje', v: LEADS.leads.filter(l => { const s = state.leads[l.id]; if (!s || CONCLUDED_STATUSES.includes(s.status)) return false; const fu = getFollowupStatus(l.id); return fu && (fu.dueToday || fu.overdue) && fu.nextStep; }).length, c: '#FBBF24' },
       { k: 'Com Instagram', v: n_ig, c: '#A78BFA' },
       { k: 'CNPJ', v: n_cnpj, c: '#F59E0B' },
     ];
@@ -1704,7 +2276,7 @@
     });
     sel.addEventListener('change', (e) => { filters.cidade = e.target.value; renderKanban(); });
     document.getElementById('btn-clear-filters').addEventListener('click', () => {
-      filters = { ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, prio: false, cidade: '', nicho: '', gmb_alta: false, tp_alta: false };
+      filters = { ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, recentes: false, prio: false, cidade: '', nicho: '', gmb_alta: false, tp_alta: false };
       document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
       selNicho.value = '';
       sel.value = '';
@@ -1804,8 +2376,48 @@
   // ==========================================================================
   // CLOUD INIT — busca estado da nuvem e mescla com state local
   // ==========================================================================
+  // Salva backup diário do estado local ANTES do sync com Supabase
+  function saveLocalBackup() {
+    try {
+      const hoje = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const backupKey = LS_KEY + '_bkp_' + hoje;
+      if (!localStorage.getItem(backupKey)) {
+        localStorage.setItem(backupKey, JSON.stringify(state));
+      }
+      // Mantém apenas os últimos 7 dias — limpa backups antigos
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(LS_KEY + '_bkp_')) {
+          const d = k.replace(LS_KEY + '_bkp_', '');
+          const diasAtras = (Date.now() - new Date(d).getTime()) / 86400000;
+          if (diasAtras > 7) localStorage.removeItem(k);
+        }
+      }
+    } catch (e) { /* localStorage pode estar cheio — ignora */ }
+  }
+
+  // Lista backups disponíveis (para restauração)
+  function listLocalBackups() {
+    const backups = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(LS_KEY + '_bkp_')) {
+        const data = k.replace(LS_KEY + '_bkp_', '');
+        try {
+          const s = JSON.parse(localStorage.getItem(k));
+          const naoNovo = Object.values(s.leads || {}).filter(l => l.status && l.status !== 'novo').length;
+          const comNota = Object.values(s.leads || {}).filter(l => (l.notes||[]).length > 0).length;
+          backups.push({ key: k, data, naoNovo, comNota });
+        } catch (e) {}
+      }
+    }
+    return backups.sort((a, b) => b.data.localeCompare(a.data));
+  }
+
   async function bootCloud() {
     if (!CLOUD_MODE) return;
+    // Backup do estado local antes de qualquer sync com a nuvem
+    saveLocalBackup();
     document.getElementById('sync-indicator').classList.remove('hidden');
     document.getElementById('btn-execucoes').classList.remove('hidden');
     document.getElementById('chip-nao-contactados').style.display = '';
@@ -1838,21 +2450,53 @@
       setSyncStatus('Vazio', '#F59E0B');
       return;
     }
+    // Primeiro passo: popula o mapa de IDs para que cloudUpsertLead funcione
     cloud.forEach(c => {
       const lid = parseInt(c.external_id);
       if (isNaN(lid)) return;
       supabaseIdMap[lid] = c.id;
-      if (state.leads[lid]) {
-        state.leads[lid].status = c.status || 'novo';
-        state.leads[lid].notes = c.notes || [];
-        state.leads[lid].activity = c.activity || [];
+    });
+
+    // Segundo passo: mescla estado — cloud prevalece só se tiver dados reais
+    const leadsParaPushLocal = [];
+    cloud.forEach(c => {
+      const lid = parseInt(c.external_id);
+      if (isNaN(lid)) return;
+      if (!state.leads[lid]) return;
+
+      const cloudStatus   = c.status || 'novo';
+      const cloudNotes    = c.notes    || [];
+      const cloudActivity = c.activity || [];
+      const cloudTemDados = cloudStatus !== 'novo' || cloudNotes.length > 0 || cloudActivity.length > 0;
+
+      const localStatus   = state.leads[lid].status    || 'novo';
+      const localNotes    = state.leads[lid].notes      || [];
+      const localActivity = state.leads[lid].activity   || [];
+      const localTemDados = localStatus !== 'novo' || localNotes.length > 0 || localActivity.length > 0;
+
+      if (cloudTemDados) {
+        // Supabase tem trabalho real → é a fonte autoritativa
+        state.leads[lid].status   = cloudStatus;
+        state.leads[lid].notes    = cloudNotes;
+        state.leads[lid].activity = cloudActivity;
+      } else if (localTemDados) {
+        // Local tem trabalho mas Supabase está em branco → sobe o local para o Supabase
+        leadsParaPushLocal.push(lid);
       }
+      // Se ambos estão vazios, mantém o local (nenhuma mudança necessária)
+
       const local = LEADS.leads.find(l => l.id === lid);
       if (local) local.novo_nesta_rodada = !!c.novo_nesta_rodada;
     });
+
     saveState();
     renderKanban();
     renderHeaderStats();
+
+    // Sobe para o Supabase qualquer lead que estava à frente localmente
+    if (leadsParaPushLocal.length > 0) {
+      leadsParaPushLocal.forEach(lid => cloudUpsertLead(lid));
+    }
   }
 
   // ==========================================================================
@@ -1871,6 +2515,8 @@
     // Botoes do header
     document.getElementById('btn-search').addEventListener('click', openPalette);
     document.getElementById('btn-export').addEventListener('click', exportCsv);
+    document.getElementById('btn-backup').addEventListener('click', exportBackupJson);
+    document.getElementById('btn-funnel').addEventListener('click', openFunnelModal);
     document.getElementById('btn-reset').addEventListener('click', openConfirm);
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
     document.getElementById('btn-execucoes').addEventListener('click', openExecucoes);
@@ -1888,6 +2534,14 @@
   } else {
     init();
   }
+
+  // Expõe funções usadas em onclick inline para o escopo global
+  window.openEditModal  = openEditModal;
+  window.saveLeadEdit   = saveLeadEdit;
+  window.toggleBot      = toggleBot;
+  window.copyGancho     = copyGancho;
+  window.copyFuMsg      = copyFuMsg;
+  window.markFuSent     = markFuSent;
 })();
 </script>
 

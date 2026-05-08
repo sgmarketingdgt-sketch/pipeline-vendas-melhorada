@@ -37,7 +37,8 @@ fase_b_brasilapi.py         → fase 4: enriquece CNPJ via BrasilAPI
 fase_d_wa_validar.py        → fase 5: valida WhatsApp via Evolution API
 fase_e_anuncia_real.py      → fase 6: verifica anúncios Meta via Playwright
 fase_email.py               → fase 7: busca e-mails (RDAP + scraping + CNPJ)
-consolidate_v2.py           → fase 8: monta leads_final.json (multi-nicho)
+fase_instagram.py           → fase 8a: busca Instagram local + dono/decisor via Google
+consolidate_v2.py           → fase 8b: monta leads_final.json (multi-nicho)
 build_html_v2.py            → fase 9: gera index.html com leads embutidos
 template_crm.html           → fonte do CRM (nunca editar index.html direto)
 servicos/                   → JSONs de configuração por nicho/serviço
@@ -53,6 +54,7 @@ leads_final.json            → saída consolidada (todos os nichos)
 wa_validado.json            → validações WhatsApp já feitas
 anuncia_validado.json       → verificações Meta Ads já feitas
 email_validado.json         → e-mails encontrados (RDAP + scraping)
+instagram_validado.json     → Instagram local + dono + decisor já buscados
 cnpj_encontrados.json       → CNPJs extraídos dos sites
 cnpj_enriquecidos.json      → dados BrasilAPI
 leads_merged.csv            → CSV da rodada atual (input do consolidate)
@@ -144,6 +146,7 @@ python3 fase_b_brasilapi.py
 python3 fase_d_wa_validar.py
 python3 fase_e_anuncia_real.py
 python3 fase_email.py
+python3 fase_instagram.py   # ← busca Instagram local + dono/decisor
 python3 consolidate_v2.py
 python3 build_html_v2.py
 /tmp/vercel-local/node_modules/.bin/vercel --prod --yes --force
@@ -158,6 +161,7 @@ python3 fase_b_brasilapi.py
 python3 fase_d_wa_validar.py
 python3 fase_e_anuncia_real.py
 python3 fase_email.py
+python3 fase_instagram.py   # ← busca Instagram local + dono/decisor
 python3 consolidate_v2.py
 python3 build_html_v2.py
 /tmp/vercel-local/node_modules/.bin/vercel --prod --yes --force
@@ -186,7 +190,30 @@ Ao mover para "Perdido" → popup de motivo (obrigatório).
 
 ---
 
-## 10. CRM — onde cada coisa está
+## 10. Campos de Instagram (pipeline + CRM)
+
+### Campos adicionados pelo pipeline (`fase_instagram.py`)
+| Campo | Fonte | Descrição |
+|---|---|---|
+| `instagram_local_url` | site scraping / existing | URL do perfil da empresa |
+| `instagram_dono_url` | Google + Instagram | URL do dono/CEO |
+| `instagram_dono_nome` | meta og:title | Nome exibido no Instagram |
+| `instagram_dono_bio` | meta og:description | Bio do perfil |
+| `instagram_decisor_url` | Google + Instagram | URL do decisor/marketing |
+| `instagram_decisor_nome` | meta og:title | Nome do decisor |
+| `instagram_decisor_bio` | meta og:description | Bio do decisor |
+
+### Edição manual no CRM
+Na aba **Visão Geral** do dossier, botão **"Editar dados"** permite corrigir/complementar:
+- Telefone, e-mail, site, nome do dono
+- Instagram do local, dono (URL + nome + bio) e decisor (URL + nome + bio)
+
+Os dados editados ficam salvos como **overrides** em localStorage e sincronizam com Supabase.  
+O `consolidate_v2.py` preserva os campos de Instagram no merge incremental.
+
+---
+
+## 11. CRM — onde cada coisa está
 
 - **Kanban**: 6 colunas (Novo → Abordado → Respondeu → Agendado → Sem resposta → Ganhou → Perdido)
 - **Filtros**: Instagram, WhatsApp, Dono, CNPJ, Anuncia Meta, E-mail, Follow-up hoje, Priority 70+, GMB Alta, Tráfego Alta, Nicho, Cidade
