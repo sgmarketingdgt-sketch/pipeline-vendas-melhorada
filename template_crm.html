@@ -706,14 +706,16 @@
       const ls = state.leads[lead.id];
       if (!ls) return false;
       if (filters.followupEtapa === 'hoje') {
-        // Mostra leads com ação de follow-up pendente hoje ou atrasada
+        // Mostra apenas leads com ação vencendo hoje ou atrasados (baseado no D0)
         if (CONCLUDED_STATUSES.includes(ls.status)) return false;
-        if (ls.historico_resumido && ls.status === 'abordado') {
+        if (ls.status !== 'abordado') return false;
+        if (!ls.followup_start) return false;
+        if (ls.historico_resumido) {
           const lastDay = getN8nLastDay(ls.historico_resumido);
           return lastDay === null || lastDay < 7;
         }
         const fu = getFollowupStatus(lead.id);
-        if (!fu || fu.nextStep === null || fu.nextStep > 4) return false;
+        if (!fu || fu.nextStep === null) return false;
         if (!fu.dueToday && !fu.overdue) return false;
       } else {
         // Filtra pela sub-coluna de follow-up (d0, d2, d5, d7)
@@ -869,6 +871,8 @@
     const m = mergeOverrides(lead);
     const isN8nLead     = !!state.leads[lead.id].historico_resumido;
     const isManualCtrl  = !!(state.leads[lead.id].overrides?.manual_control);
+    const ov = state.leads[lead.id].overrides || {};
+    const hasManualData = !!(ov.telefone || ov.email || ov.site || ov.dono || ov.whatsapp_numero || ov.nome || ov.instagram_local_url || ov.instagram_dono_url || ov.instagram_decisor_url);
     return `
     <article class="lead-card" data-lead-id="${lead.id}" data-status="${status}" ${ehSumido ? 'style="opacity:0.55"' : ''}>
       ${ehNovo ? '<span class="badge-novo">Novo</span>' : ''}
@@ -905,6 +909,7 @@
         ${ig ? `<span class="badge st-respondeu"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>IG</span>` : ''}
         ${meta ? `<span class="badge st-abordado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M22 12C22 6.477 17.523 2 12 2S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>Meta</span>` : ''}
         ${google ? `<span class="badge st-agendado"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z"/></svg>Google</span>` : ''}
+        ${hasManualData ? `<span class="badge" style="color:#A78BFA;border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.08)" title="Dados editados manualmente"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:9px;height:9px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>editado</span>` : ''}
       </div>
       ${!ehNovo && dataEntradaFmt ? `<span style="font-size:10px;color:#2A2A2A;display:block;margin-top:4px">entrou ${dataEntradaFmt}</span>` : ''}
       ${renderCardFollowupBadge(lead.id)}
@@ -1576,29 +1581,32 @@
     return ts < Date.now() && !isToday(ts);
   }
 
+  // Mapa: sub-coluna → próxima etapa pendente (qual mensagem enviar agora)
+  const SUBCOL_NEXT_STEP = { d0: 1, d2: 2, d5: 3, d7: 4 };
+  // Rótulos curtos para exibição
+  const STEP_LABEL = { 1: 'D0', 2: 'D+2', 3: 'D+5', 4: 'D+7' };
+
   function getFollowupStatus(leadId) {
     const ls = state.leads[leadId];
     if (!ls) return null;
     const baseTs = ls.followup_start;
     if (!baseTs) return null;
-    const sent = ls.followup_sent || {};   // {1: ts, 2: ts, ...}
-    // find next unsent step
-    let nextStep = null, dueTs = null;
-    for (const step of FU_STEPS) {
-      if (!sent[step.n]) {
-        nextStep = step.n;
-        // calculate due date from last sent step or base
-        const lastSentTs = step.n > 1 ? (sent[step.n-1] || baseTs) : baseTs;
-        dueTs = lastSentTs + step.dias * 86400000;
-        break;
-      }
-    }
+    if (ls.status !== 'abordado') return null;
+
+    // Sub-coluna define qual etapa está pendente — nunca usa followup_sent como base
+    const subcol   = getAbordadoSubcol(leadId);
+    const nextStep = SUBCOL_NEXT_STEP[subcol] || 1;
+    const step     = FU_STEPS.find(s => s.n === nextStep);
+    if (!step) return { nextStep: null, dueTs: null, dueToday: false, overdue: false, baseTs };
+
+    // Todas as datas sempre relativas ao D0 (followup_start), não à etapa anterior
+    const dueTs = baseTs + step.dias * 86400000;
     return {
       nextStep,
       dueTs,
       dueToday: isToday(dueTs),
-      overdue: isPast(dueTs),
-      sent,
+      overdue:  isPast(dueTs),
+      sent: ls.followup_sent || {},
       baseTs,
     };
   }
@@ -1654,16 +1662,17 @@
     if (!ls.followup_start) return '';
     const fu = getFollowupStatus(leadId);
     if (!fu || fu.nextStep === null) {
-      return `<div class="fu-badge done mt-1">Concluido</div>`;
+      return `<div class="fu-badge done mt-1">Régua concluída</div>`;
     }
-    const step = FU_STEPS.find(s => s.n === fu.nextStep);
+    const lbl = STEP_LABEL[fu.nextStep] || `Etapa ${fu.nextStep}`;
+    const dateStr = fmtDate(fu.dueTs);
     if (fu.overdue) {
-      return `<div class="fu-badge overdue">Atrasado · Etapa ${fu.nextStep} · ${fmtDate(fu.dueTs)}</div>`;
+      return `<div class="fu-badge overdue">${lbl} · ${dateStr} · atrasado</div>`;
     }
     if (fu.dueToday) {
-      return `<div class="fu-badge due">Hoje · Etapa ${fu.nextStep}</div>`;
+      return `<div class="fu-badge due">🔔 ${lbl} · hoje</div>`;
     }
-    return `<div class="fu-badge ok">D+${step.dias} · ${fmtDate(fu.dueTs)}</div>`;
+    return `<div class="fu-badge ok">${lbl} · ${dateStr}</div>`;
   }
 
   function getFuMessage(lead, stepN) {
@@ -1818,39 +1827,58 @@
       </section>`;
     }
 
-    const stepsHtml = FU_STEPS.map(step => {
-      const isSent = !!sent[step.n];
-      const isNext = fu && fu.nextStep === step.n;
-      const dueTs = isSent ? sent[step.n] : (fu && isNext ? fu.dueTs : null);
-      let dotClass = 'pending', dotIcon = step.n;
-      if (isSent) { dotClass = 'done'; dotIcon = '✓'; }
-      else if (isNext && fu.overdue) { dotClass = 'overdue'; dotIcon = '!'; }
-      else if (isNext) { dotClass = 'active'; dotIcon = step.n; }
+    // Sub-coluna define o que já foi feito — etapas anteriores = concluídas
+    const subcol     = getAbordadoSubcol(lead.id);
+    const nextStepN  = SUBCOL_NEXT_STEP[subcol] || 1;
 
-      const msg = getFuMessage(lead, step.n);
+    const stepsHtml = FU_STEPS.map(step => {
+      const lbl        = STEP_LABEL[step.n] || `D+${step.dias}`;
+      // Todas as datas calculadas a partir do D0 — nunca da etapa anterior
+      const dueTsD0    = baseTs + step.dias * 86400000;
+      const isSent     = step.n < nextStepN;                    // já foi feito
+      const isNext     = step.n === nextStepN;                   // pendente agora
+      const isFuture   = step.n > nextStepN;                    // ainda não chegou
+      const isOverdue  = isNext && isPast(dueTsD0);
+      const isToday_   = isNext && isToday(dueTsD0);
+
+      let dotClass = 'pending', dotIcon = step.n;
+      if (isSent)          { dotClass = 'done';    dotIcon = '✓'; }
+      else if (isOverdue)  { dotClass = 'overdue'; dotIcon = '!'; }
+      else if (isNext)     { dotClass = 'active';  dotIcon = step.n; }
+
+      // Data exibida: se enviado → timestamp real; senão → data calculada do D0
+      const sentTs   = sent[step.n];
+      const dateInfo = isSent
+        ? `<span style="color:#525252">enviado ${fmtDate(sentTs)}</span>`
+        : `<span style="color:${isOverdue ? '#F87171' : isToday_ ? '#FBBF24' : '#525252'}">${lbl} · ${fmtDate(dueTsD0)}${isOverdue ? ' · ⚠️ atrasado' : isToday_ ? ' · hoje' : ''}</span>`;
+
+      const msg   = getFuMessage(lead, step.n);
       const msgId = `fu-msg-${lead.id}-${step.n}`;
+      const nextStepObj = FU_STEPS.find(s => s.n === step.n + 1);
+      const nextLbl = nextStepObj ? STEP_LABEL[nextStepObj.n] : null;
 
       return `<div class="fu-step">
         <div class="fu-step-dot ${dotClass}">${dotIcon}</div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-2 mb-1">
-            <span class="text-[13px] font-semibold text-ink">Etapa ${step.n} — ${step.label}</span>
-            <span class="text-[11px] text-ink-dim flex-shrink-0">
-              ${isSent ? `enviado em ${fmtDate(sent[step.n])}` : (dueTs ? `${fu && fu.overdue && isNext ? 'atrasado · ' : ''}previsto ${fmtDate(dueTs)}` : '—')}
-            </span>
+            <span class="text-[13px] font-semibold ${isSent ? 'text-ink-dim' : 'text-ink'}">${lbl} — ${step.label}</span>
+            <span class="text-[11px] flex-shrink-0">${dateInfo}</span>
           </div>
-          ${msg ? `<p id="${msgId}" class="text-[12.5px] text-ink-dim leading-relaxed mb-2 whitespace-pre-line">${esc(msg)}</p>` : ''}
-          ${!isSent && isNext ? `
-            <div class="flex gap-2">
-              <button onclick="copyFuMsg('${msgId}')" class="text-[11px] px-3 py-1 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover transition-colors">Copiar mensagem</button>
-              <button onclick="markFuSent(${lead.id}, ${step.n})" class="text-[11px] px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 hover:bg-blue-500/20 transition-colors">Marcar como enviado</button>
+          ${msg && !isSent ? `<p id="${msgId}" class="text-[12.5px] text-ink-dim leading-relaxed mb-2 whitespace-pre-line">${esc(msg)}</p>` : ''}
+          ${isNext ? `
+            <div class="flex gap-2 flex-wrap">
+              ${msg ? `<button onclick="copyFuMsg('${msgId}')" class="text-[11px] px-3 py-1 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover transition-colors">Copiar mensagem</button>` : ''}
+              <button onclick="markFuSent(${lead.id}, ${step.n})" class="text-[11px] px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 hover:bg-emerald-500/20 transition-colors font-semibold">
+                ✓ Enviado${nextLbl ? ` → ${nextLbl}` : ' → Encerrar'}
+              </button>
             </div>` : ''}
         </div>
       </div>`;
     }).join('');
 
     return `<section class="mb-6">
-      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-4">Régua de Follow-up · iniciada ${fmtDate(baseTs)}</h3>
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-1">Régua de Follow-up</h3>
+      <p class="text-[11px] text-ink-faded mb-4">D0 em ${fmtDate(baseTs)} · todas as datas calculadas a partir daí</p>
       <div>${stepsHtml}</div>
     </section>`;
   }
@@ -1891,14 +1919,23 @@
     ls.followup_sent = ls.followup_sent || {};
     ls.followup_sent[stepN] = Date.now();
     ls.activity = ls.activity || [];
-    const stepLabel = FU_STEPS.find(s => s.n === stepN)?.label || `Etapa ${stepN}`;
-    ls.activity.unshift({ t: Date.now(), type: 'followup', msg: `Follow-up Etapa ${stepN} (${stepLabel}) marcado como enviado` });
+    const stepObj   = FU_STEPS.find(s => s.n === stepN);
+    const stepCode  = STEP_LABEL[stepN] || `Etapa ${stepN}`;
+    const stepLabel = stepObj?.label || stepCode;
+    // Avança para a próxima sub-coluna automaticamente
+    const nextSubcol = { 1: 'd2', 2: 'd5', 3: 'd7' }[stepN];
+    if (nextSubcol && ls.status === 'abordado') {
+      ls.overrides = ls.overrides || {};
+      ls.overrides.abordado_subcol = nextSubcol;
+    }
+    const nextLbl = nextSubcol ? STEP_LABEL[stepN + 1] : null;
+    ls.activity.unshift({ t: Date.now(), type: 'followup', msg: `${stepCode} — ${stepLabel} enviado${nextLbl ? ` → avançou para ${nextLbl}` : ' → régua concluída'}` });
     saveState();
-    cloudUpsertLead(leadId);
+    cloudUpsertLead(leadId, { skipStatus: true });
     const lead = LEADS.leads.find(l => l.id === leadId);
     if (lead) renderDossierBody(lead);
     renderKanban();
-    toast(`Etapa ${stepN} registrada`);
+    toast(`${stepCode} registrado${nextLbl ? ` · avançou para ${nextLbl}` : ' · régua concluída'}`);
   }
 
   // Unified status change handler
