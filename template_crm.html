@@ -1640,7 +1640,9 @@
   function renderCardFollowupBadge(leadId) {
     const ls = state.leads[leadId];
     if (!ls) return '';
-    if (CONCLUDED_STATUSES.includes(ls.status)) return '';
+    // Badge de follow-up só faz sentido para leads em abordado
+    // Qualificado/respondeu/agendado/ganhou/perdeu não exibem régua
+    if (ls.status !== 'abordado') return '';
     if (ls.status === 'respondeu' && ls.is_bot) {
       return `<div class="fu-badge" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);color:#60A5FA;margin-top:5px">→ Tentar outro canal</div>`;
     }
@@ -1816,7 +1818,6 @@
       return renderHistoricoN8N(ls.historico_resumido);
     }
 
-    const fu = getFollowupStatus(lead.id);
     const sent = (ls.followup_sent || {});
     const baseTs = ls.followup_start;
 
@@ -1826,6 +1827,20 @@
         <p class="text-[13px] text-ink-dim italic">Mova este lead para <strong class="text-ink">Abordado</strong> para iniciar a régua automaticamente.</p>
       </section>`;
     }
+
+    // Lead que saiu de abordado (respondeu, qualificado, etc.) — mostra histórico da régua sem ações
+    if (ls.status !== 'abordado') {
+      const etapasFeitasLabels = FU_STEPS.filter(s => sent[s.n]).map(s => STEP_LABEL[s.n] || `D+${s.dias}`);
+      return `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
+        <div style="padding:12px 14px;background:#0F1A0F;border:1px solid #1A3A1A;border-radius:10px;margin-bottom:12px">
+          <p style="font-size:12px;color:#34D399;font-weight:600;margin:0 0 4px">✅ Lead avançou na régua</p>
+          <p style="font-size:12px;color:#737373;margin:0">Régua iniciada em ${fmtDate(baseTs)}${etapasFeitasLabels.length ? ` · etapas enviadas: ${etapasFeitasLabels.join(', ')}` : ''}</p>
+        </div>
+      </section>`;
+    }
+
+    const fu = getFollowupStatus(lead.id);
 
     // Sub-coluna define o que já foi feito — etapas anteriores = concluídas
     const subcol     = getAbordadoSubcol(lead.id);
