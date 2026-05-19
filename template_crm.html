@@ -93,6 +93,8 @@
   .st-novo { color: #A3A3A3; background: rgba(115,115,115,0.12); border-color: rgba(115,115,115,0.3); }
   .st-abordado { color: #3B82F6; background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); }
   .st-respondeu { color: #A78BFA; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3); }
+  .st-qualificando { color: #A78BFA; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3); }
+  .st-qualificado { color: #22D3EE; background: rgba(6,182,212,0.12); border-color: rgba(6,182,212,0.3); }
   .st-agendado { color: #FBBF24; background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); }
   .st-ganhou { color: #34D399; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); }
   .st-perdeu { color: #F87171; background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); }
@@ -105,6 +107,11 @@
   .loss-reason { font-size:11px; color:#F87171; margin-top:3px; font-style:italic; }
   .fu-step { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #1E1E1E; }
   .fu-step:last-child { border-bottom:none; }
+  /* Dropdown de dados do lead */
+  #dados-dropdown label.dados-opt { display:flex; align-items:center; gap:8px; padding:5px 14px; font-size:12px; color:#A3A3A3; cursor:pointer; transition:background 120ms; white-space:nowrap; }
+  #dados-dropdown label.dados-opt:hover { background:rgba(59,130,246,0.08); color:#E5E5E5; }
+  #dados-dropdown label.dados-opt input[type=checkbox] { accent-color:#3B82F6; width:12px; height:12px; flex-shrink:0; cursor:pointer; }
+  #btn-dados-filter.has-active { background:rgba(59,130,246,0.12); color:#3B82F6; border-color:rgba(59,130,246,0.35); }
   .fu-step-dot { width:20px; height:20px; border-radius:50%; border:2px solid; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; margin-top:2px; }
   .fu-step-dot.done { background:#10B981; border-color:#10B981; color:white; }
   .fu-step-dot.active { background:rgba(59,130,246,0.2); border-color:#3B82F6; color:#3B82F6; }
@@ -223,7 +230,7 @@
   .lead-card:hover .drag-dots { opacity: 0.6; }
 
   /* Badge "Novo" para leads recém-extraídos no modo incremental */
-  .badge-novo { position: absolute; top: -6px; left: -6px; background: #EF4444; color: white; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(239,68,68,0.4); text-transform: uppercase; line-height: 1; z-index: 2; }
+  .badge-novo { position: absolute; top: -6px; left: -6px; background: #EF4444; color: white; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 7px; border-radius: 5px; box-shadow: 0 2px 6px rgba(239,68,68,0.4); text-transform: uppercase; line-height: 1; z-index: 2; pointer-events: none; }
 </style>
 </head>
 <body class="bg-[#0A0A0A] text-ink font-body">
@@ -260,6 +267,9 @@
     <button id="btn-export" title="Exportar CSV (com notas e histórico)" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     </button>
+    <button id="btn-force-sync" title="Forçar sincronização completa com Supabase" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+    </button>
     <button id="btn-backup" title="Backup completo (JSON)" class="w-9 h-9 flex items-center justify-center bg-panel hover:bg-panel-hover border border-line hover:border-line-hover rounded-lg text-ink-muted hover:text-ink transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     </button>
@@ -283,30 +293,57 @@
 </header>
 
 <!-- FILTER BAR STICKY -->
-<nav class="fixed top-16 left-0 right-0 h-12 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-line z-30 overflow-x-auto">
-  <div class="h-full px-5 flex items-center gap-2 whitespace-nowrap">
+<nav class="fixed top-16 left-0 right-0 h-12 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-line z-30">
+  <div class="h-full px-5 flex items-center gap-2 whitespace-nowrap overflow-x-auto">
     <span class="text-[11px] font-semibold uppercase tracking-widest text-ink-faded mr-1">Filtros</span>
+
+    <!-- Chips fixos (visíveis apenas em Cloud Mode) -->
     <button class="chip" data-filter="naoContactados" id="chip-nao-contactados" style="display:none">Apenas não contactados</button>
     <button class="chip" data-filter="novosNestaRodada" id="chip-novos" style="display:none">Novos nesta rodada</button>
-    <button class="chip" data-filter="ig">Com Instagram</button>
-    <button class="chip" data-filter="wa">WhatsApp real</button>
-    <button class="chip" data-filter="dono">Com dono</button>
-    <button class="chip" data-filter="cnpj">CNPJ oficial</button>
-    <button class="chip" data-filter="meta">Anuncia Meta</button>
-    <button class="chip" data-filter="email">✉️ Com e-mail</button>
-    <button class="chip" data-filter="followupHoje">Follow-up hoje</button>
-    <button class="chip" data-filter="recentes">📅 Recentes (7d)</button>
-    <button class="chip" data-filter="prio">Priority 70+</button>
-    <div class="h-5 w-px bg-line mx-2"></div>
+
+    <div class="h-5 w-px bg-line mx-1"></div>
+
+    <!-- Dados do lead — multi-select dropdown -->
+    <div id="dados-filter-wrap">
+      <button id="btn-dados-filter" class="chip" type="button">Dados do lead ▾</button>
+      <div id="dados-dropdown" class="hidden fixed bg-[#161616] border border-[#2A2A2A] rounded-xl shadow-2xl py-1.5" style="z-index:9999;min-width:170px">
+        <label class="dados-opt"><input type="checkbox" data-df="ig"> Com Instagram</label>
+        <label class="dados-opt"><input type="checkbox" data-df="wa"> WhatsApp real</label>
+        <label class="dados-opt"><input type="checkbox" data-df="dono"> Com dono</label>
+        <label class="dados-opt"><input type="checkbox" data-df="cnpj"> CNPJ oficial</label>
+        <label class="dados-opt"><input type="checkbox" data-df="meta"> Anuncia Meta</label>
+        <label class="dados-opt"><input type="checkbox" data-df="email"> Com e-mail</label>
+        <label class="dados-opt"><input type="checkbox" data-df="prio"> Priority 70+</label>
+      </div>
+    </div>
+
+    <!-- Follow-up por etapa — select nativo -->
+    <select id="filter-followup" class="chip" style="padding:6px 11px">
+      <option value="">Follow-up: todos</option>
+      <option value="hoje">🔔 Follow-up hoje</option>
+      <option value="d0">D0 · Aguardando</option>
+      <option value="d2">D+2 · 2° contato</option>
+      <option value="d5">D+5 · 3° contato</option>
+      <option value="d7">D+7 · Encerramento</option>
+    </select>
+
+    <div class="h-5 w-px bg-line mx-1"></div>
+
+    <!-- Serviços -->
     <button class="chip" data-filter="gmb_alta">📍 GMB Alta</button>
     <button class="chip" data-filter="tp_alta">📣 Tráfego Alta</button>
-    <div class="h-5 w-px bg-line mx-2"></div>
-    <select id="filter-nicho" class="chip" style="padding: 6px 11px;">
+    <button class="chip" data-filter="minhasAbordagens">👤 Minhas abordagens</button>
+
+    <div class="h-5 w-px bg-line mx-1"></div>
+
+    <!-- Nicho e cidade -->
+    <select id="filter-nicho" class="chip" style="padding:6px 11px">
       <option value="">Todos os nichos</option>
     </select>
-    <select id="filter-cidade" class="chip" style="padding: 6px 11px;">
+    <select id="filter-cidade" class="chip" style="padding:6px 11px">
       <option value="">Todas as cidades</option>
     </select>
+
     <div class="h-5 w-px bg-line mx-2"></div>
     <button id="btn-clear-filters" class="text-[11px] text-ink-dim hover:text-ink-muted transition-colors">Limpar</button>
     <span id="counter" class="ml-auto text-[12px] text-ink-muted font-medium nums pr-2">50 leads</span>
@@ -314,7 +351,7 @@
 </nav>
 
 <!-- KANBAN PRINCIPAL -->
-<main id="kanban" class="pt-28 pb-8 px-5 flex gap-4 overflow-x-auto min-h-screen">
+<main id="kanban" class="pt-28 pb-8 px-5 flex items-start gap-4 overflow-x-auto min-h-screen">
   <!-- Colunas renderizadas via JS -->
 </main>
 
@@ -332,6 +369,7 @@
     <button class="tab-btn active" data-tab="geral">Visao Geral</button>
     <button class="tab-btn" data-tab="rapport">Rapport Humano</button>
     <button class="tab-btn" data-tab="dor">Ganchos de Dor</button>
+    <button class="tab-btn" data-tab="score">Score</button>
     <button class="tab-btn" data-tab="atividade">Atividade</button>
     <button class="tab-btn" data-tab="followup">Follow-up</button>
   </div>
@@ -462,28 +500,62 @@
     }
   }
 
-  async function cloudUpsertLead(leadId) {
+  // opts.skipStatus = true → não inclui status no payload (usado ao salvar edição de dados,
+  //   para não sobrescrever status gerenciado pelo N8N no Supabase)
+  async function cloudUpsertLead(leadId, opts = {}) {
     if (!CLOUD_MODE || !supabaseClient) return;
-    const supabaseId = supabaseIdMap[leadId];
-    if (!supabaseId) return;
     const ls = state.leads[leadId];
     if (!ls) return;
     const lead = LEADS.leads.find(l => l.id === leadId);
-    const stillNovoFlag = !!(lead && lead.novo_nesta_rodada && ls.status === 'novo');
+    if (!lead) return;
+    const stillNovoFlag = !!(lead.novo_nesta_rodada && ls.status === 'novo');
+    const payload = {
+      notes:             ls.notes    || [],
+      activity:          ls.activity || [],
+      novo_nesta_rodada: stillNovoFlag,
+      overrides:         ls.overrides || {},
+      is_bot:            ls.is_bot   || null,
+    };
+    // Status só vai ao Supabase quando explicitamente solicitado
+    // (evita que o CRM sobrescreva status gerenciados pelo N8N)
+    if (!opts.skipStatus) {
+      payload.status = ls.status;
+    }
     bumpPending(1);
     try {
-      await supabaseClient
-        .from('leads')
-        .update({
-          status: ls.status,
-          notes: ls.notes || [],
-          activity: ls.activity || [],
-          novo_nesta_rodada: stillNovoFlag,
-          overrides: ls.overrides || {},
-        })
-        .eq('id', supabaseId);
+      const supabaseId = supabaseIdMap[leadId];
+      if (supabaseId) {
+        // Atualiza row existente
+        const { error } = await supabaseClient
+          .from('leads')
+          .update(payload)
+          .eq('id', supabaseId);
+        if (error) {
+          console.error('[cloud] update falhou', leadId, error);
+          setSyncStatus('Erro ao salvar', '#EF4444');
+        }
+      } else {
+        // Row não existe no mapa — tenta upsert por external_id
+        const { data, error } = await supabaseClient
+          .from('leads')
+          .upsert({
+            ...payload,
+            external_id: String(leadId),
+            agencia:     CRM_CONFIG.agencia,
+            nome:        lead.nome || '',
+            segmento:    lead.segmento || '',
+          }, { onConflict: 'external_id,agencia' })
+          .select('id')
+          .single();
+        if (error) {
+          console.error('[cloud] upsert fallback falhou', leadId, error);
+          setSyncStatus('Erro ao salvar', '#EF4444');
+        } else if (data?.id) {
+          supabaseIdMap[leadId] = data.id; // registra para próximas chamadas
+        }
+      }
     } catch (e) {
-      console.error('[cloud] upsert falhou', e);
+      console.error('[cloud] upsert exceção', e);
       setSyncStatus('Erro ao salvar', '#EF4444');
     } finally {
       bumpPending(-1);
@@ -512,13 +584,14 @@
   // ==========================================================================
   const LS_KEY = 'ethos_crm_bh_2026_04_22';
   const STATUSES = [
-    { id: 'novo',       label: 'Novo',       color: '#737373' },
-    { id: 'abordado',   label: 'Abordado',   color: '#3B82F6' },
-    { id: 'respondeu',  label: 'Respondeu',  color: '#8B5CF6' },
-    { id: 'agendado',   label: 'Agendado',   color: '#F59E0B' },
+    { id: 'novo',        label: 'Novo',         color: '#737373' },
+    { id: 'abordado',    label: 'Abordado',     color: '#3B82F6' },
+    { id: 'respondeu',   label: 'Qualificando', color: '#8B5CF6' },
+    { id: 'qualificado', label: 'Qualificado',  color: '#06B6D4' },
+    { id: 'agendado',    label: 'Agendado',     color: '#F59E0B' },
     { id: 'sem_resposta', label: 'Sem resposta', color: '#FB923C' },
-    { id: 'ganhou',     label: 'Ganhou',     color: '#10B981' },
-    { id: 'perdeu',     label: 'Perdeu',     color: '#EF4444' },
+    { id: 'ganhou',      label: 'Ganhou',       color: '#10B981' },
+    { id: 'perdeu',      label: 'Perdeu',       color: '#EF4444' },
   ];
 
   // Cores pseudo-randomicas pra avatar (via hash do nome)
@@ -531,8 +604,10 @@
   let filters = {
     naoContactados: CLOUD_MODE,   // ativo por padrão em modo cloud
     novosNestaRodada: false,
-    ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, recentes: false, prio: false, cidade: '', nicho: '',
-    gmb_alta: false, tp_alta: false
+    ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, prio: false,
+    followupEtapa: '', cidade: '', nicho: '',
+    gmb_alta: false, tp_alta: false,
+    minhasAbordagens: false,
   };
   let searchTerm = '';
   let selectedLeadId = null;
@@ -549,6 +624,13 @@
       LEADS.leads.forEach(l => {
         if (!parsed.leads[l.id]) {
           parsed.leads[l.id] = { status: 'novo', notes: [], activity: [] };
+        }
+      });
+      // Normaliza status N8N sem coluna kanban
+      Object.values(parsed.leads).forEach(ls => {
+        if (ls.status === 'desqualificado') {
+          ls.status = 'perdeu';
+          if (!ls.loss_reason) ls.needs_loss_reason = true;
         }
       });
       return parsed;
@@ -613,27 +695,41 @@
     // Cidade
     if (filters.cidade && lead.cidade !== filters.cidade) return false;
     // Chips
-    if (filters.ig && !hasInstagram(lead)) return false;
-    if (filters.wa && !lead.whatsapp_ativo) return false;
-    if (filters.dono && !lead.dono) return false;
-    if (filters.cnpj && !lead.cnpj) return false;
-    if (filters.meta && lead.anuncia_meta !== 'sim') return false;
-    if (filters.email && !lead.email) return false;
-    if (filters.recentes) {
-      if (!lead.data_entrada) return false;
-      const sete = new Date(); sete.setDate(sete.getDate() - 7);
-      if (new Date(lead.data_entrada) < sete) return false;
-    }
-    if (filters.followupHoje) {
+    if (filters.ig    && !hasInstagram(lead))           return false;
+    if (filters.wa    && !lead.whatsapp_ativo)           return false;
+    if (filters.dono  && !lead.dono)                     return false;
+    if (filters.cnpj  && !lead.cnpj)                     return false;
+    if (filters.meta  && lead.anuncia_meta !== 'sim')    return false;
+    if (filters.email && !lead.email)                    return false;
+    if (filters.prio  && (lead.priority_score||0) < 70) return false;
+    if (filters.followupEtapa) {
       const ls = state.leads[lead.id];
-      if (!ls || CONCLUDED_STATUSES.includes(ls.status)) return false;
-      const fu = getFollowupStatus(lead.id);
-      if (!fu || fu.nextStep === null || fu.nextStep > 4) return false;
-      if (!fu.dueToday) return false;
+      if (!ls) return false;
+      if (filters.followupEtapa === 'hoje') {
+        // Mostra leads com ação de follow-up pendente hoje ou atrasada
+        if (CONCLUDED_STATUSES.includes(ls.status)) return false;
+        if (ls.historico_resumido && ls.status === 'abordado') {
+          const lastDay = getN8nLastDay(ls.historico_resumido);
+          return lastDay === null || lastDay < 7;
+        }
+        const fu = getFollowupStatus(lead.id);
+        if (!fu || fu.nextStep === null || fu.nextStep > 4) return false;
+        if (!fu.dueToday && !fu.overdue) return false;
+      } else {
+        // Filtra pela sub-coluna de follow-up (d0, d2, d5, d7)
+        if (ls.status !== 'abordado') return false;
+        if (getAbordadoSubcol(lead.id) !== filters.followupEtapa) return false;
+      }
     }
-    if (filters.prio && (lead.priority_score || 0) < 70) return false;
     if (filters.gmb_alta && (lead.servicos?.gmb?.classificacao !== 'alta')) return false;
     if (filters.tp_alta && (lead.servicos?.trafego_pago?.classificacao !== 'alta')) return false;
+    // "Minhas abordagens": só leads manuais (sem historico_resumido) ou com controle manual ativado
+    if (filters.minhasAbordagens) {
+      const lsf = state.leads[lead.id];
+      const temBot = !!lsf?.historico_resumido;
+      const temControleManual = !!(lsf?.overrides?.manual_control);
+      if (temBot && !temControleManual) return false;
+    }
     // Search global
     if (searchTerm) {
       const hay = simple([
@@ -650,14 +746,81 @@
   // ==========================================================================
   // RENDERIZACAO KANBAN
   // ==========================================================================
+  // Retorna em qual sub-coluna de follow-up um lead "abordado" se enquadra
+  function getAbordadoSubcol(leadId) {
+    const ls = state.leads[leadId];
+    if (!ls) return 'd0';
+    const ov = ls.overrides || {};
+    // Controle manual explícito tem prioridade absoluta (inclusive sobre N8N)
+    if (ov.manual_control && ov.abordado_subcol) return ov.abordado_subcol;
+    // Lead gerenciado pelo N8N — posição calculada pelo histórico
+    if (ls.historico_resumido) {
+      const d = getN8nLastDay(ls.historico_resumido);
+      if (d === null || d <= 1) return 'd0';
+      if (d <= 3) return 'd2';
+      if (d <= 5) return 'd5';
+      return 'd7';
+    }
+    // Lead manual — posição salva pelo arraste
+    if (ov.abordado_subcol) return ov.abordado_subcol;
+    // Fallback: followup_sent
+    const sent = ls.followup_sent || {};
+    if (sent[4]) return 'd7';
+    if (sent[3]) return 'd5';
+    if (sent[2]) return 'd2';
+    return 'd0';
+  }
+
+  const FU_COLS = [
+    { subcol: 'd0', label: 'Abordado',      color: '#3B82F6' },
+    { subcol: 'd2', label: 'D+2 · Follow-up', color: '#F59E0B' },
+    { subcol: 'd5', label: 'D+5 · Follow-up', color: '#F97316' },
+    { subcol: 'd7', label: 'D+7 · Encerrar',  color: '#EF4444' },
+  ];
+
   function renderKanban() {
     const kanban = document.getElementById('kanban');
     kanban.innerHTML = '';
     STATUSES.forEach(status => {
+      if (status.id === 'abordado') {
+        // Divide a coluna Abordado em 4 sub-colunas de follow-up
+        FU_COLS.forEach(({ subcol, label, color }) => {
+          const leadsInSubcol = LEADS.leads.filter(l => {
+            const s = state.leads[l.id].status;
+            return s === 'abordado' && getAbordadoSubcol(l.id) === subcol && matchesLead(l);
+          });
+          const col = document.createElement('section');
+          col.className = 'kanban-col flex-shrink-0 w-[260px] flex flex-col';
+          col.dataset.status = 'abordado';
+          col.innerHTML = `
+            <div class="flex items-center gap-2 mb-3 px-1 sticky top-0">
+              <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${color}"></span>
+              <h2 class="font-display text-[13px] tracking-tight">${label}</h2>
+              <span class="text-[11px] font-mono text-ink-dim nums">${leadsInSubcol.length}</span>
+              <button class="ml-auto w-5 h-5 flex items-center justify-center text-ink-faded hover:text-ink-muted rounded" data-col-action="collapse" aria-label="Recolher coluna">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
+              </button>
+            </div>
+            <div class="kanban-col-body flex flex-col gap-2 p-2 rounded-xl border border-dashed transition-colors ${leadsInSubcol.length === 0 ? 'min-h-[52px] justify-center' : 'min-h-[80px]'}" data-col="abordado" data-subcol="${subcol}" style="border-color:${leadsInSubcol.length ? color + '30' : '#1F1F1F'}">
+              ${leadsInSubcol.length === 0
+                ? `<div style="text-align:center;font-size:10px;color:#2A2A2A;letter-spacing:0.06em;user-select:none">solte aqui</div>`
+                : leadsInSubcol.map(renderCard).join('')
+              }
+            </div>
+          `;
+          kanban.appendChild(col);
+        });
+        return;
+      }
       const col = document.createElement('section');
       col.className = 'kanban-col flex-shrink-0 w-[320px] flex flex-col';
       col.dataset.status = status.id;
-      const leadsInStatus = LEADS.leads.filter(l => state.leads[l.id].status === status.id && matchesLead(l));
+      const leadsInStatus = LEADS.leads.filter(l => {
+        const s = state.leads[l.id].status;
+        const matchStatus = s === status.id ||
+          (status.id === 'respondeu' && (s === 'qualificando' || s === 'aguardando_decisor' || s === 'aguardando_contato'));
+        return matchStatus && matchesLead(l);
+      });
       col.innerHTML = `
         <div class="flex items-center gap-2 mb-3 px-1 sticky top-0">
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${status.color}"></span>
@@ -667,9 +830,9 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
           </button>
         </div>
-        <div class="kanban-col-body flex-1 flex flex-col gap-2 p-2 rounded-xl border border-dashed border-transparent min-h-[200px] transition-colors" data-col="${status.id}">
+        <div class="kanban-col-body flex flex-col gap-2 p-2 rounded-xl border border-dashed transition-colors ${leadsInStatus.length === 0 ? 'min-h-[52px] justify-center' : 'min-h-[80px]'}" data-col="${status.id}" style="border-color:${leadsInStatus.length ? 'transparent' : '#1F1F1F'}">
           ${leadsInStatus.length === 0
-            ? `<div class="text-center py-8 text-[11px] text-ink-faded font-body">Arraste leads aqui</div>`
+            ? `<div style="text-align:center;font-size:10px;color:#2A2A2A;letter-spacing:0.06em;user-select:none">solte aqui</div>`
             : leadsInStatus.map(renderCard).join('')
           }
         </div>
@@ -694,16 +857,32 @@
     const dataEntrada    = lead.data_entrada || '';
     const dataEntradaFmt = dataEntrada ? dataEntrada.slice(8,10) + '/' + dataEntrada.slice(5,7) : '';
     const ehNovo   = status === 'novo' && !!dataEntrada;
+    const sc = lead.score_conversacional || {};
+    const temp = sc.temperatura || 'frio';
+    const tempColorMap = { frio:'#737373', curioso:'#F59E0B', qualificado:'#3B82F6', prioridade:'#EF4444' };
+    const tempColor = tempColorMap[temp] || '#737373';
     const ehSumido = !!lead.nao_visto_nesta_rodada;
+    const ehAguardandoDecisor  = status === 'aguardando_decisor';
+    const ehAguardandoContato  = status === 'aguardando_contato';
+    const ehQualificando       = status === 'qualificando';
+    const ehQualificado        = status === 'qualificado';
+    const m = mergeOverrides(lead);
+    const isN8nLead     = !!state.leads[lead.id].historico_resumido;
+    const isManualCtrl  = !!(state.leads[lead.id].overrides?.manual_control);
     return `
     <article class="lead-card" data-lead-id="${lead.id}" data-status="${status}" ${ehSumido ? 'style="opacity:0.55"' : ''}>
       ${ehNovo ? '<span class="badge-novo">Novo</span>' : ''}
-      ${ehSumido ? '<span style="position:absolute;top:-6px;right:-6px;background:#525252;color:#D4D4D4;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2">NÃO VISTO</span>' : ''}
+      ${ehSumido ? '<span style="position:absolute;top:-6px;right:-6px;background:#525252;color:#D4D4D4;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2;pointer-events:none">NÃO VISTO</span>' : ''}
+      ${ehAguardandoDecisor  ? '<span style="position:absolute;top:-6px;left:8px;background:#F59E0B;color:#1A1A1A;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2;pointer-events:none">⏳ AGUARDANDO DECISOR</span>' : ''}
+      ${ehAguardandoContato  ? '<span style="position:absolute;top:-6px;left:8px;background:#8B5CF6;color:#fff;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2;pointer-events:none">📞 AGUARDA CONTATO HUMANO</span>' : ''}
+      ${ehQualificando       ? '<span style="position:absolute;top:-6px;left:8px;background:#7C3AED;color:#fff;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2;pointer-events:none">🤖 QUALIFICANDO</span>' : ''}
+      ${ehQualificado        ? '<span style="position:absolute;top:-6px;left:8px;background:#0891B2;color:#fff;font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px;letter-spacing:0.04em;line-height:1;z-index:2;pointer-events:none">✅ ICP CONFIRMADO</span>' : ''}
       <div class="drag-dots"><span></span><span></span><span></span></div>
       <div class="flex items-start justify-between gap-2 mb-1.5">
-        <h3 class="font-display text-[13.5px] leading-snug text-ink flex-1 truncate" title="${esc(lead.nome)}">${esc(lead.nome)}</h3>
+        <h3 class="font-display text-[13.5px] leading-snug text-ink flex-1 truncate" title="${esc(m.nome)}">${esc(m.nome)}</h3>
         <span class="prio-pill ${prioClass(prio)} nums flex-shrink-0">${prio}</span>
       </div>
+      ${temp !== 'frio' ? `<div style="height:3px;border-radius:2px;margin-bottom:6px;background:${tempColor};opacity:0.75" title="Score conversacional: ${temp}"></div>` : ''}
       ${temDono ? `
         <div class="flex items-center gap-1.5 text-[11.5px] text-ink-muted mb-1">
           <svg class="w-3 h-3 text-ink-dim flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -729,7 +908,9 @@
       </div>
       ${!ehNovo && dataEntradaFmt ? `<span style="font-size:10px;color:#2A2A2A;display:block;margin-top:4px">entrou ${dataEntradaFmt}</span>` : ''}
       ${renderCardFollowupBadge(lead.id)}
-      ${status === 'respondeu' ? (() => {
+      ${isN8nLead && !isManualCtrl ? `<div style="display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:600;color:#6B7280;margin-top:4px">🤖 <span>Automático</span></div>` : ''}
+      ${isN8nLead && isManualCtrl  ? `<div style="display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:600;color:#F59E0B;margin-top:4px">✋ <span>Controle manual</span></div>` : ''}
+      ${(status === 'respondeu' || status === 'qualificando') ? (() => {
         const botVal = state.leads[lead.id].is_bot || null;
         const m = mergeOverrides(lead);
         const email = m.email || lead.email || '';
@@ -739,7 +920,11 @@
         const emailHint = (botVal === 'infinito' && email) ? `<a href="mailto:${esc(email)}" onclick="event.stopPropagation()" class="bot-email-hint" title="Tentar por e-mail">→ ${esc(email)}</a>` : '';
         return `<div><button onclick="event.stopPropagation();toggleBot(${lead.id})" class="bot-toggle${btnClass}" title="${btnTitle}">${btnLabel}</button>${emailHint}</div>`;
       })() : ''}
-      ${status === 'perdeu' && state.leads[lead.id].loss_reason ? `<div class="loss-reason">↳ ${esc(state.leads[lead.id].loss_reason)}</div>` : ''}
+      ${status === 'perdeu' && state.leads[lead.id].loss_reason
+        ? `<div class="loss-reason">↳ ${esc(state.leads[lead.id].loss_reason)}</div>`
+        : status === 'perdeu' && state.leads[lead.id].needs_loss_reason
+          ? `<div class="loss-reason" style="color:#F59E0B;cursor:pointer" onclick="window.openPendingLossReason(${lead.id})">⚠️ Definir motivo da perda</div>`
+          : ''}
     </article>
     `;
   }
@@ -764,10 +949,53 @@
           const leadId = Number(evt.item.dataset.leadId);
           const newStatus = evt.to.dataset.col;
           const oldStatus = state.leads[leadId].status;
+
           if (newStatus !== oldStatus) {
+            // Mudança de coluna real (ex: abordado → respondeu)
             changeLeadStatus(leadId, newStatus, oldStatus);
             evt.item.dataset.status = newStatus;
             updateCounter();
+          } else if (newStatus === 'abordado' && evt.to.dataset.subcol) {
+            // Arrastar entre sub-colunas de follow-up (mesmo status, sub-coluna diferente)
+            const newSubcol = evt.to.dataset.subcol;
+            const ls = state.leads[leadId];
+            const currentSubcol = (ls.overrides || {}).abordado_subcol;
+            if (ls && currentSubcol !== newSubcol) {
+              const isN8nLead = !!ls.historico_resumido;
+              ls.overrides = ls.overrides || {};
+              ls.overrides.abordado_subcol = newSubcol;
+              ls.activity = ls.activity || [];
+              const label = { d0: 'D0 · Abordado', d2: 'D+2', d5: 'D+5', d7: 'D+7 · Encerrar' }[newSubcol] || newSubcol;
+
+              // Sincroniza followup_sent com a sub-coluna destino (apenas leads manuais)
+              // Arrastar para D+2 → etapa 1 foi feita; D+5 → etapas 1+2; D+7 → etapas 1+2+3
+              if (!isN8nLead || ls.overrides.manual_control) {
+                const now = Date.now();
+                ls.followup_sent = ls.followup_sent || {};
+                ls.followup_start = ls.followup_start || now;
+                const stepsToMark = { d0: [], d2: [1], d5: [1, 2], d7: [1, 2, 3] }[newSubcol] || [];
+                stepsToMark.forEach(step => {
+                  if (!ls.followup_sent[step]) ls.followup_sent[step] = now;
+                });
+                if (stepsToMark.length > 0) {
+                  ls.activity.unshift({
+                    t: now, type: 'followup',
+                    msg: `Etapa${stepsToMark.length > 1 ? 's' : ''} ${stepsToMark.join(' e ')} marcada${stepsToMark.length > 1 ? 's' : ''} como enviada${stepsToMark.length > 1 ? 's' : ''} ao mover para ${label}`
+                  });
+                }
+              }
+
+              if (isN8nLead && !ls.overrides.manual_control) {
+                ls.overrides.manual_control = true;
+                ls.activity.unshift({ t: Date.now(), type: 'manual_override', msg: `✋ Controle manual ativado — movido para ${label}` });
+                toast('✋ Controle manual ativado — N8N pausado para este lead');
+              } else {
+                ls.activity.unshift({ t: Date.now(), type: 'move', msg: `Movido manualmente → ${label}` });
+              }
+              saveState();
+              cloudUpsertLead(leadId, { skipStatus: true });
+              renderKanban();
+            }
           }
         }
       });
@@ -807,10 +1035,28 @@
     setTimeout(() => { d.style.display = 'none'; selectedLeadId = null; }, 240);
   }
 
+  // Labels para status gerados pelo N8N (não existem no STATUSES array)
+  const N8N_STATUS_LABELS = {
+    'qualificando':       '🤖 Qualificando',
+    'aguardando_decisor': '⏳ Aguard. Decisor',
+    'aguardando_contato': '📞 Aguard. Contato',
+    'desqualificado':     '❌ Desqualificado',
+  };
+
   function renderDossierHead(lead) {
-    const statusObj = STATUSES.find(s => s.id === state.leads[lead.id].status);
+    const currentStatus = state.leads[lead.id].status;
+    const isN8nStatus   = currentStatus in N8N_STATUS_LABELS;
+    const statusObj     = STATUSES.find(s => s.id === currentStatus)
+                       || STATUSES.find(s => s.id === 'respondeu')
+                       || STATUSES[0];
+    const statusOptions = isN8nStatus
+      ? `<option value="${currentStatus}" selected>${N8N_STATUS_LABELS[currentStatus]}</option>
+         <optgroup label="── Mover para ──">
+           ${STATUSES.map(s => `<option value="${s.id}">${s.label}</option>`).join('')}
+         </optgroup>`
+      : STATUSES.map(s => `<option value="${s.id}" ${currentStatus === s.id ? 'selected' : ''}>${s.label}</option>`).join('');
     const m = mergeOverrides(lead);
-    const wa = lead.whatsapp_wa_me;
+    const wa = m.whatsapp_wa_me || lead.whatsapp_wa_me;
     const site = m.site || lead.site;
     const maps = lead.maps_url;
     const ig = m.instagram_local_url || (lead.instagram && lead.instagram.url || '');
@@ -823,7 +1069,7 @@
       <div class="flex items-start gap-4 mb-5">
         <div class="avatar" style="background: ${avatarColor(lead.nome)}20; color: ${avatarColor(lead.nome)};">${initials(lead.nome)}</div>
         <div class="flex-1 min-w-0">
-          <h2 class="font-display text-[20px] leading-tight mb-1">${esc(lead.nome)}</h2>
+          <h2 class="font-display text-[20px] leading-tight mb-1">${esc(m.nome)}</h2>
           ${lead.razao_social ? `<p class="text-[12px] text-ink-dim font-body truncate">${esc(lead.razao_social)}</p>` : ''}
           ${dono ? `<p class="text-[12.5px] text-ink-muted mt-1 truncate"><span class="text-ink-dim">Dono:</span> <span class="text-ink">${esc(dono)}</span> ${fonte ? `<span class="text-ink-faded text-[11px] ml-1">${fonteLabel}</span>` : ''}</p>` : '<p class="text-[12.5px] text-ink-dim mt-1 italic">Dono nao identificado</p>'}
         </div>
@@ -839,12 +1085,65 @@
         ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener" class="action-pill"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Maps</a>` : ''}
         ${igOk ? `<a href="${esc(ig)}" target="_blank" rel="noopener" class="action-pill"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>Instagram</a>` : ''}
         <select id="status-select" class="status-select ml-auto" data-lead="${lead.id}">
-          ${STATUSES.map(s => `<option value="${s.id}" ${statusObj.id === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}
+          ${statusOptions}
         </select>
       </div>
+      ${currentStatus === 'perdeu' ? (() => {
+        const lr = state.leads[lead.id].loss_reason || '';
+        const needsReason = state.leads[lead.id].needs_loss_reason;
+        const isOutro = lr && !LOSS_REASONS.slice(0,-1).includes(lr);
+        const selectVal = isOutro ? 'Outro' : (lr || '');
+        return `
+        <div id="loss-reason-row" style="margin-top:10px;padding:10px 12px;background:#111;border:1px solid ${needsReason ? '#F59E0B44' : '#1F1F1F'};border-radius:10px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#525252;font-weight:600">Motivo da perda</span>
+            ${needsReason ? '<span style="font-size:10px;color:#F59E0B;font-weight:600">⚠️ Pendente</span>' : ''}
+          </div>
+          <select id="loss-reason-select" style="background:#1A1A1A;border:1px solid #2E2E2E;color:#D4D4D4;font-size:12px;padding:7px 10px;border-radius:7px;width:100%;cursor:pointer;outline:none">
+            <option value="" ${!selectVal ? 'selected' : ''} disabled>Selecione o motivo...</option>
+            ${LOSS_REASONS.map(r => `<option value="${esc(r)}" ${selectVal === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+          </select>
+          <input id="loss-reason-outro" type="text" placeholder="Descreva o motivo..." value="${esc(isOutro ? lr : '')}"
+            style="display:${isOutro ? 'block' : 'none'};background:#111;border:1px solid #333;border-radius:7px;padding:7px 10px;font-size:12px;color:#F5F5F5;outline:none;width:100%;box-sizing:border-box">
+        </div>`;
+      })() : ''}
     `;
 
     document.getElementById('btn-close-dossier').addEventListener('click', closeDossier);
+
+    // Motivo da perda — select + campo livre
+    const lrSelect = document.getElementById('loss-reason-select');
+    const lrOutro  = document.getElementById('loss-reason-outro');
+    if (lrSelect) {
+      const saveLossReason = () => {
+        let val = lrSelect.value;
+        if (val === 'Outro') val = lrOutro?.value.trim() || 'Outro';
+        if (!val) return;
+        state.leads[lead.id].loss_reason = val;
+        delete state.leads[lead.id].needs_loss_reason;
+        state.leads[lead.id].activity = state.leads[lead.id].activity || [];
+        // Remove entrada anterior de motivo se já existia
+        state.leads[lead.id].activity = state.leads[lead.id].activity.filter(a => a.type !== 'loss_edit');
+        state.leads[lead.id].activity.unshift({ t: Date.now(), type: 'loss_edit', msg: `Motivo da perda: ${val}` });
+        saveState();
+        cloudUpsertLead(lead.id);
+        renderKanban();
+        // Atualiza visual do row sem re-renderizar o dossier inteiro
+        const row = document.getElementById('loss-reason-row');
+        if (row) row.style.borderColor = '#1F1F1F';
+        row?.querySelector('span[style*="F59E0B"]')?.remove();
+        toast('Motivo salvo');
+      };
+      lrSelect.addEventListener('change', () => {
+        if (lrOutro) lrOutro.style.display = lrSelect.value === 'Outro' ? 'block' : 'none';
+        if (lrSelect.value !== 'Outro') saveLossReason();
+      });
+      if (lrOutro) {
+        lrOutro.addEventListener('blur', () => { if (lrSelect.value === 'Outro') saveLossReason(); });
+        lrOutro.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveLossReason(); } });
+      }
+    }
+
     document.getElementById('status-select').addEventListener('change', (e) => {
       const newStatus = e.target.value;
       const oldStatus = state.leads[lead.id].status;
@@ -876,6 +1175,7 @@
       <div class="tab-panel active" data-panel="geral">${renderTabGeral(lead)}</div>
       <div class="tab-panel" data-panel="rapport">${renderTabRapport(lead)}</div>
       <div class="tab-panel" data-panel="dor">${renderTabDor(lead)}</div>
+      <div class="tab-panel" data-panel="score">${renderTabScore(lead)}</div>
       <div class="tab-panel" data-panel="atividade">${renderTabAtividade(lead)}</div>
       <div class="tab-panel" data-panel="followup">${renderTabFollowup(lead)}</div>
     `;
@@ -886,10 +1186,28 @@
   function mergeOverrides(lead) {
     const ov = (state.leads[lead.id] && state.leads[lead.id].overrides) || {};
     const m = { ...lead };
-    if (ov.telefone)           m.telefone = ov.telefone;
-    if (ov.email)              m.email    = ov.email;
-    if (ov.site)               m.site     = ov.site;
-    if (ov.dono)               m.dono     = ov.dono;
+    // Identificação
+    if (ov.nome)               m.nome              = ov.nome;
+    if (ov.endereco_completo)  m.endereco_completo = ov.endereco_completo;
+    // Contato
+    if (ov.telefone)           m.telefone     = ov.telefone;
+    if (ov.email)              m.email        = ov.email;
+    if (ov.site)               m.site         = ov.site;
+    if (ov.dono)               m.dono         = ov.dono;
+    // Cadastro
+    if (ov.cnpj)               m.cnpj         = ov.cnpj;
+    if (ov.razao_social)       m.razao_social = ov.razao_social;
+    if (ov.nome_fantasia)      m.nome_fantasia= ov.nome_fantasia;
+    if (ov.segmento)           m.segmento     = ov.segmento;
+    // Localização
+    if (ov.cidade)             m.cidade       = ov.cidade;
+    if (ov.bairro)             m.bairro       = ov.bairro;
+    // WhatsApp — ao sobrescrever número, reconstrói link wa.me
+    if (ov.whatsapp_numero) {
+      m.whatsapp_numero = ov.whatsapp_numero.replace(/\D/g, '');
+      m.whatsapp_wa_me  = 'https://wa.me/' + m.whatsapp_numero;
+    }
+    // Instagram
     m.instagram_local_url    = ov.instagram_local_url    || (lead.instagram && lead.instagram.url) || '';
     m.instagram_dono_url     = ov.instagram_dono_url     || lead.instagram_dono_url     || '';
     m.instagram_dono_bio     = ov.instagram_dono_bio     || lead.instagram_dono_bio     || '';
@@ -902,7 +1220,8 @@
 
   function renderTabGeral(l) {
     const m = mergeOverrides(l);
-    const wa = l.whatsapp_numero;
+    const wa = m.whatsapp_numero || l.whatsapp_numero;
+    const waLink = m.whatsapp_wa_me || l.whatsapp_wa_me;
     return `
     <section class="mb-6">
       <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Contato</h3>
@@ -915,6 +1234,7 @@
         <span class="info-v flex items-center gap-2">
           <span class="mono">${esc(wa || '—')}</span>
           ${wa ? `<button class="copy-btn text-[10px] px-2 py-0.5 bg-panel border border-line rounded text-ink-dim hover:text-ink hover:border-line-hover" data-copy="${esc(wa)}">copiar</button>` : ''}
+          ${waLink ? `<a href="${esc(waLink)}" target="_blank" rel="noopener" class="text-[10px] px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 hover:text-emerald-300">abrir</a>` : ''}
           ${l.whatsapp_ativo ? '<span class="badge st-ganhou ml-1">validado</span>' : '<span class="badge st-novo">nao ativo</span>'}
           ${l.whatsapp_perfil_nome ? `<span class="text-[11px] text-ink-dim">"${esc(l.whatsapp_perfil_nome)}"</span>` : ''}
         </span>
@@ -1064,10 +1384,64 @@
         <span class="info-v">${renderSignal(l.anuncia_google)}</span>
       </div>
       <div class="info-row">
-        <span class="info-k">Priority score</span>
+        <span class="info-k">Score de Perfil</span>
         <span class="info-v"><span class="prio-pill ${prioClass(Math.round(l.priority_score||0))} nums">${Math.round(l.priority_score || 0)}</span></span>
       </div>
     </section>
+
+    ${(() => {
+      const sc = l.score_conversacional || {};
+      const total = sc.total || 0;
+      if (total === 0 && !sc.ultima_atualizacao) return '';
+      const temp = sc.temperatura || 'frio';
+      const tempColorMap = { frio:'#737373', curioso:'#F59E0B', qualificado:'#3B82F6', prioridade:'#EF4444' };
+      const tempColor = tempColorMap[temp] || '#737373';
+      const tempLabel = { frio:'Frio', curioso:'Curioso', qualificado:'Qualificado', prioridade:'Prioridade' }[temp] || temp;
+      const pilarMaxMap = { dor: 30, momento: 30, maturidade: 20, comportamento: 20 };
+      const pilarLabelMap = { dor: 'Dor', momento: 'Momento', maturidade: 'Maturidade', comportamento: 'Comportamento' };
+      const pilarColorMap = { dor: '#EF4444', momento: '#F59E0B', maturidade: '#3B82F6', comportamento: '#10B981' };
+      const pilares = ['dor', 'momento', 'maturidade', 'comportamento'].map(k => {
+        const val = sc[k] || 0;
+        const max = pilarMaxMap[k];
+        const pct = Math.min(100, Math.round((val / max) * 100));
+        return `
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-1">
+              <span style="font-size:11px;font-weight:600;color:#A3A3A3;text-transform:uppercase;letter-spacing:0.06em">${pilarLabelMap[k]}</span>
+              <span style="font-size:11px;font-family:JetBrains Mono,monospace;color:#F5F5F5">${val}/${max}</span>
+            </div>
+            <div style="height:6px;background:#1E1E1E;border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${pilarColorMap[k]};border-radius:3px;transition:width 300ms ease"></div>
+            </div>
+          </div>`;
+      }).join('');
+      const antiCurioso = sc.anti_curioso || 0;
+      const antiBar = antiCurioso > 0 ? `
+        <div class="mb-3">
+          <div class="flex items-center justify-between mb-1">
+            <span style="font-size:11px;font-weight:600;color:#737373;text-transform:uppercase;letter-spacing:0.06em">Penalidade anti-curioso</span>
+            <span style="font-size:11px;font-family:JetBrains Mono,monospace;color:#737373">-${antiCurioso}</span>
+          </div>
+          <div style="height:6px;background:#1E1E1E;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(100, antiCurioso*10)}%;background:#525252;border-radius:3px"></div>
+          </div>
+        </div>` : '';
+      return `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Score Conversacional</h3>
+      <div class="mb-4 flex items-center gap-3">
+        <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:${tempColor}20;border:1px solid ${tempColor}50">
+          <span style="width:8px;height:8px;border-radius:50%;background:${tempColor};flex-shrink:0"></span>
+          <span style="font-size:12px;font-weight:700;color:${tempColor}">${tempLabel}</span>
+        </div>
+        <span style="font-size:22px;font-weight:800;font-family:JetBrains Mono,monospace;color:#F5F5F5">${total}</span>
+        <span style="font-size:12px;color:#737373">pts</span>
+      </div>
+      ${pilares}
+      ${antiBar}
+      ${sc.ultima_atualizacao ? `<p style="font-size:10px;color:#525252;margin-top:4px">Atualizado em ${new Date(sc.ultima_atualizacao).toLocaleString('pt-BR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>` : ''}
+    </section>`;
+    })()}
     `;
   }
 
@@ -1175,6 +1549,7 @@
   ];
 
   const LOSS_REASONS = [
+    'Desqualificado pelo agente',
     'Sem resposta após régua completa',
     'Não tem interesse no momento',
     'Já tem fornecedor/agência',
@@ -1230,13 +1605,53 @@
 
   const CONCLUDED_STATUSES = ['ganhou', 'perdeu', 'agendado'];
 
+  // Lê o último dia enviado pelo N8N no historico_resumido
+  function getN8nLastDay(historico) {
+    if (!historico) return null;
+    const matches = [...historico.matchAll(/\[D(\d+)(?:\s*-[^\]]+)?\]/gi)];
+    if (!matches.length) return null;
+    return Math.max(...matches.map(m => parseInt(m[1])));
+  }
+
+  // Recupera followup_start perdido a partir do histórico de atividade
+  function repairFollowupStart() {
+    let repaired = 0;
+    LEADS.leads.forEach(lead => {
+      const ls = state.leads[lead.id];
+      if (!ls || ls.followup_start) return;
+      const entry = (ls.activity || []).find(a => a.msg && a.msg.includes('Régua de follow-up iniciada'));
+      if (entry && entry.t) {
+        ls.followup_start = entry.t;
+        ls.followup_sent  = ls.followup_sent || {};
+        repaired++;
+      }
+    });
+    if (repaired > 0) { saveState(); console.log(`[repair] ${repaired} followup_start recuperados`); }
+  }
+
   function renderCardFollowupBadge(leadId) {
     const ls = state.leads[leadId];
-    if (!ls || !ls.followup_start) return '';
+    if (!ls) return '';
     if (CONCLUDED_STATUSES.includes(ls.status)) return '';
     if (ls.status === 'respondeu' && ls.is_bot) {
       return `<div class="fu-badge" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);color:#60A5FA;margin-top:5px">→ Tentar outro canal</div>`;
     }
+
+    // Lead gerenciado pelo N8N — badge baseado no historico_resumido
+    if (ls.historico_resumido && ls.status === 'abordado') {
+      const lastDay = getN8nLastDay(ls.historico_resumido);
+      const N8N_DAYS = [2, 3, 5, 7];
+      if (lastDay === null || lastDay <= 1) {
+        return `<div class="fu-badge ok mt-1" style="color:#60A5FA;border-color:rgba(59,130,246,0.3)">🤖 Abordagem enviada · aguarda D+2</div>`;
+      }
+      const nextDay = N8N_DAYS.find(d => d > lastDay);
+      if (!nextDay) {
+        return `<div class="fu-badge done mt-1">🤖 D+7 concluído</div>`;
+      }
+      return `<div class="fu-badge ok mt-1" style="color:#F59E0B;border-color:rgba(245,158,11,0.3)">🤖 D+${lastDay} enviado · aguarda D+${nextDay}</div>`;
+    }
+
+    if (!ls.followup_start) return '';
     const fu = getFollowupStatus(leadId);
     if (!fu || fu.nextStep === null) {
       return `<div class="fu-badge done mt-1">Concluido</div>`;
@@ -1272,21 +1687,93 @@
     return '';
   }
 
+  function renderHistoricoN8N(historico) {
+    if (!historico) return '';
+    // Divide o histórico em entradas pela tag [...]
+    const entradas = historico.split(/\n(?=\[)/).filter(e => e.trim());
+    const itens = entradas.map(entrada => {
+      const tagMatch = entrada.match(/^\[([^\]]+)\]/);
+      const tag = tagMatch ? tagMatch[1] : 'Interação';
+      const corpo = entrada.replace(/^\[[^\]]+\]\s*/, '').trim();
+      // Cor por tipo de entrada
+      let cor = '#3B82F6'; // azul padrão
+      if (/abordagem/i.test(tag))     cor = '#3B82F6';
+      if (/qualifica/i.test(tag))     cor = '#8B5CF6';
+      if (/follow.?up|D\d/i.test(tag)) cor = '#F59E0B';
+      if (/agenda/i.test(tag))         cor = '#10B981';
+      return `
+        <div style="display:flex;gap:10px;padding-bottom:14px">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+            <div style="width:8px;height:8px;border-radius:50%;background:${cor};margin-top:4px;flex-shrink:0"></div>
+            <div style="width:1px;flex:1;background:#262626;margin-top:4px"></div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <p style="font-size:11px;font-weight:600;color:${cor};margin:0 0 4px;text-transform:uppercase;letter-spacing:0.06em">${esc(tag)}</p>
+            ${corpo ? `<p style="font-size:12px;color:#A3A3A3;margin:0;white-space:pre-wrap;line-height:1.6">${esc(corpo)}</p>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <section class="mb-6">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+          <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded">Histórico do Agente</h3>
+          <span style="font-size:9px;background:#1E293B;color:#60A5FA;border:1px solid #1E40AF;border-radius:4px;padding:2px 6px;font-weight:600">N8N</span>
+        </div>
+        <div style="padding-left:4px">${itens}</div>
+      </section>`;
+  }
+
   function renderTabFollowup(lead) {
     const ls = state.leads[lead.id];
     if (!ls) return '';
 
+    const isN8nLead    = !!ls.historico_resumido;
+    const manualCtrl   = !!(ls.overrides?.manual_control);
+
+    // Painel de controle manual (visível quando lead é do N8N)
+    const painelControle = isN8nLead ? `
+      <section class="mb-5">
+        <div style="background:#111;border:1px solid #222;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:15px;line-height:1">${manualCtrl ? '✋' : '🤖'}</span>
+            <div>
+              <p style="font-size:11px;font-weight:700;color:${manualCtrl ? '#F59E0B' : '#6B7280'};margin:0 0 2px;text-transform:uppercase;letter-spacing:0.06em">${manualCtrl ? 'Controle manual ativo' : 'Gerenciado pelo N8N'}</p>
+              <p style="font-size:11px;color:#4B4B4B;margin:0">${manualCtrl ? 'Posição manual preservada. N8N não altera a sub-coluna.' : 'Posição calculada pelo histórico do bot.'}</p>
+            </div>
+          </div>
+          ${manualCtrl
+            ? `<button onclick="releaseToN8n(${lead.id})" style="flex-shrink:0;font-size:11px;font-weight:600;color:#6B7280;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:7px;padding:5px 10px;cursor:pointer;white-space:nowrap" title="Devolver controle ao N8N">🤖 Devolver ao N8N</button>`
+            : `<button onclick="takeManualControl(${lead.id})" style="flex-shrink:0;font-size:11px;font-weight:600;color:#F59E0B;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:7px;padding:5px 10px;cursor:pointer;white-space:nowrap" title="Tomar controle manual deste lead">✋ Tomar controle</button>`
+          }
+        </div>
+      </section>` : '';
+
     if (ls.status === 'ganhou' || ls.status === 'perdeu') {
-      return `<section class="mb-6">
+      return painelControle + `<section class="mb-6">
         <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
         <p class="text-[13px] text-ink-dim italic">Lead concluído — follow-up encerrado.</p>
       </section>`;
     }
     if (ls.status === 'agendado') {
-      return `<section class="mb-6">
-        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
-        <p class="text-[13px] text-ink-dim italic">Reunião agendada — aguardando próxima etapa.</p>
-      </section>`;
+      const m = mergeOverrides(lead);
+      const temEmail = !!(m.email || lead.email);
+      return painelControle + `<section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Agendamento</h3>
+        <p class="text-[13px] text-ink-dim italic mb-3">Reunião agendada — evento criado no Google Calendar.</p>
+        ${!temEmail ? `
+        <div style="background:#451A03;border:1px solid #92400E;border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:16px;line-height:1">⚠️</span>
+          <div>
+            <p style="font-size:12px;font-weight:600;color:#FCD34D;margin:0 0 4px">Lead sem e-mail cadastrado</p>
+            <p style="font-size:11px;color:#D97706;margin:0">O convite do Google Calendar não foi enviado. O agente deve perguntar o e-mail na próxima interação ou adicione manualmente em <strong>Editar dados</strong>.</p>
+          </div>
+        </div>` : `
+        <div style="background:#064E3B;border:1px solid #065F46;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px">✅</span>
+          <p style="font-size:12px;color:#6EE7B7;margin:0">Convite enviado para <strong>${esc(m.email || lead.email)}</strong></p>
+        </div>`}
+      </section>
+      ${ls.historico_resumido ? renderHistoricoN8N(ls.historico_resumido) : ''}`;
     }
 
     if (ls.is_bot && ls.status === 'respondeu') {
@@ -1313,6 +1800,11 @@
           </div>
         </div>
       </section>`;
+    }
+
+    // Lead gerenciado pelo N8N → mostra timeline do agente
+    if (ls.historico_resumido) {
+      return renderHistoricoN8N(ls.historico_resumido);
     }
 
     const fu = getFollowupStatus(lead.id);
@@ -1430,6 +1922,13 @@
       state.leads[leadId].followup_sent = {};
       state.leads[leadId].activity.unshift({ t: Date.now(), type: 'followup', msg: 'Régua de follow-up iniciada' });
     }
+    // Limpa overrides de sub-coluna e controle manual ao sair do abordado
+    if (oldStatus === 'abordado' && newStatus !== 'abordado') {
+      if (state.leads[leadId].overrides) {
+        delete state.leads[leadId].overrides.abordado_subcol;
+        delete state.leads[leadId].overrides.manual_control;
+      }
+    }
     if (lossReason) {
       state.leads[leadId].loss_reason = lossReason;
       state.leads[leadId].activity.unshift({ t: Date.now(), type: 'loss', msg: `Motivo da perda: ${lossReason}` });
@@ -1439,16 +1938,25 @@
     toast(`Status atualizado para ${STATUSES.find(s=>s.id===newStatus)?.label||newStatus}`);
   }
 
-  function showLossReasonPopup(leadId, newStatus, oldStatus, afterFn) {
+  function showLossReasonPopup(leadId, newStatus, oldStatus, afterFn, historicoCtx, nomeCtx) {
     // Remove any existing popup
     document.getElementById('loss-popup')?.remove();
     const popup = document.createElement('div');
     popup.id = 'loss-popup';
     popup.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)';
+    const ctxHtml = historicoCtx ? `
+      <div style="background:#111;border:1px solid #2E2E2E;border-radius:8px;padding:10px 14px;margin-bottom:16px;max-height:120px;overflow-y:auto">
+        <p style="font-size:10px;color:#525252;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 6px">Últimas mensagens do agente</p>
+        <pre style="font-size:11px;color:#A3A3A3;margin:0;white-space:pre-wrap;font-family:inherit;line-height:1.5">${esc(historicoCtx)}</pre>
+      </div>` : '';
+    const subtitulo = nomeCtx
+      ? `<p style="font-size:12px;color:#737373;margin-bottom:12px">Lead: <strong style="color:#D4D4D4">${esc(nomeCtx)}</strong> — desqualificado pelo agente N8N. Leia a conversa e defina o motivo real.</p>`
+      : `<p style="font-size:12px;color:#737373;margin-bottom:20px">Escolha o motivo para registrar no histórico</p>`;
     popup.innerHTML = `
-      <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:16px;padding:28px;width:380px;max-width:90vw;">
+      <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:16px;padding:28px;width:420px;max-width:92vw;max-height:90vh;overflow-y:auto">
         <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:#F5F5F5">Por que esse lead foi perdido?</h3>
-        <p style="font-size:12px;color:#737373;margin-bottom:20px">Escolha o motivo para registrar no histórico</p>
+        ${subtitulo}
+        ${ctxHtml}
         <div id="loss-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
           ${LOSS_REASONS.map((r,i) => `
             <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid #2E2E2E;cursor:pointer;transition:all 140ms" class="loss-opt" data-idx="${i}">
@@ -1534,11 +2042,43 @@
           </div>
         </div>
 
-        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Contato</p>
+        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Cadastro</p>
         <div style="display:grid;gap:12px;margin-bottom:20px">
           <div>
-            <label class="edit-field-label">Telefone</label>
-            <input id="ef-tel" class="edit-field" value="${esc(m.telefone || '')}" placeholder="${esc(lead.telefone || '')}">
+            <label class="edit-field-label">Nome do estabelecimento</label>
+            <input id="ef-nome" class="edit-field" value="${esc(m.nome || '')}" placeholder="${esc(lead.nome || '')}">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="edit-field-label">CNPJ</label>
+              <input id="ef-cnpj" class="edit-field" value="${esc(m.cnpj || '')}" placeholder="${esc(lead.cnpj || 'não detectado')}">
+            </div>
+            <div>
+              <label class="edit-field-label">Segmento</label>
+              <input id="ef-segmento" class="edit-field" value="${esc(m.segmento || '')}" placeholder="${esc(lead.segmento || '')}">
+            </div>
+          </div>
+          <div>
+            <label class="edit-field-label">Razão social</label>
+            <input id="ef-razao" class="edit-field" value="${esc(m.razao_social || '')}" placeholder="${esc(lead.razao_social || 'não detectada')}">
+          </div>
+          <div>
+            <label class="edit-field-label">Nome fantasia</label>
+            <input id="ef-fantasia" class="edit-field" value="${esc(m.nome_fantasia || '')}" placeholder="${esc(lead.nome_fantasia || 'não detectado')}">
+          </div>
+        </div>
+
+        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Contato</p>
+        <div style="display:grid;gap:12px;margin-bottom:20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label class="edit-field-label">Telefone</label>
+              <input id="ef-tel" class="edit-field" value="${esc(m.telefone || '')}" placeholder="${esc(lead.telefone || '')}">
+            </div>
+            <div>
+              <label class="edit-field-label">WhatsApp (só dígitos)</label>
+              <input id="ef-wa" class="edit-field" value="${esc(m.whatsapp_numero || '')}" placeholder="${esc(lead.whatsapp_numero || 'ex: 5511999990000')}">
+            </div>
           </div>
           <div>
             <label class="edit-field-label">E-mail</label>
@@ -1552,6 +2092,22 @@
             <label class="edit-field-label">Nome do dono</label>
             <input id="ef-dono" class="edit-field" value="${esc(m.dono || '')}" placeholder="${esc(lead.dono || 'desconhecido')}">
           </div>
+        </div>
+
+        <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Localização</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label class="edit-field-label">Cidade</label>
+            <input id="ef-cidade" class="edit-field" value="${esc(m.cidade || '')}" placeholder="${esc(lead.cidade || '')}">
+          </div>
+          <div>
+            <label class="edit-field-label">Bairro</label>
+            <input id="ef-bairro" class="edit-field" value="${esc(m.bairro || '')}" placeholder="${esc(lead.bairro || '')}">
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <label class="edit-field-label">Endereço completo</label>
+          <input id="ef-endereco" class="edit-field" value="${esc(m.endereco_completo || '')}" placeholder="${esc(lead.endereco_completo || '')}">
         </div>
 
         <p style="font-size:10px;color:#404040;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;margin-bottom:12px">Instagram</p>
@@ -1618,10 +2174,24 @@
 
     const get = id => (document.getElementById(id)?.value || '').trim();
 
-    ls.overrides.telefone             = get('ef-tel');
-    ls.overrides.email                = get('ef-email');
-    ls.overrides.site                 = get('ef-site');
-    ls.overrides.dono                 = get('ef-dono');
+    // Nome
+    ls.overrides.nome               = get('ef-nome');
+    // Cadastro
+    ls.overrides.cnpj               = get('ef-cnpj');
+    ls.overrides.razao_social       = get('ef-razao');
+    ls.overrides.nome_fantasia      = get('ef-fantasia');
+    ls.overrides.segmento           = get('ef-segmento');
+    // Contato
+    ls.overrides.telefone           = get('ef-tel');
+    ls.overrides.whatsapp_numero    = get('ef-wa').replace(/\D/g, '');
+    ls.overrides.email              = get('ef-email');
+    ls.overrides.site               = get('ef-site');
+    ls.overrides.dono               = get('ef-dono');
+    // Localização
+    ls.overrides.cidade             = get('ef-cidade');
+    ls.overrides.bairro             = get('ef-bairro');
+    ls.overrides.endereco_completo  = get('ef-endereco');
+    // Instagram
     ls.overrides.instagram_local_url  = get('ef-ig-local');
     ls.overrides.instagram_dono_url   = get('ef-ig-dono-url');
     ls.overrides.instagram_dono_nome  = get('ef-ig-dono-nome');
@@ -1635,7 +2205,8 @@
     ls.activity.unshift({ t: Date.now(), type: 'edit', msg: 'Dados do lead editados manualmente' });
 
     saveState();
-    cloudUpsertLead(leadId);
+    // skipStatus: não sobrescreve o status no Supabase — pode ser gerenciado pelo N8N
+    cloudUpsertLead(leadId, { skipStatus: true });
 
     document.getElementById('edit-modal-overlay')?.remove();
 
@@ -1655,6 +2226,117 @@
       const btn = el.closest('li')?.querySelector('button');
       if (btn) { btn.innerText = '✓ Copiado!'; setTimeout(() => btn.innerText = 'Copiar', 2000); }
     });
+  }
+
+  function renderTabScore(l) {
+    const sc = l.score_conversacional || {};
+    const total = sc.total || 0;
+    const temp = sc.temperatura || 'frio';
+    const sinais = sc.sinais || [];
+    const tempColorMap = { frio:'#737373', curioso:'#F59E0B', qualificado:'#3B82F6', prioridade:'#EF4444' };
+    const tempBgMap   = { frio:'rgba(115,115,115,0.08)', curioso:'rgba(245,158,11,0.08)', qualificado:'rgba(59,130,246,0.08)', prioridade:'rgba(239,68,68,0.08)' };
+    const tempColor = tempColorMap[temp] || '#737373';
+    const tempLabel = { frio:'❄️ Frio', curioso:'🤔 Curioso', qualificado:'✅ Qualificado', prioridade:'🔥 Prioridade' }[temp] || temp;
+    const pilarMaxMap = { dor: 30, momento: 30, maturidade: 20, comportamento: 20 };
+    const pilarLabelMap = { dor: 'Dor detectada', momento: 'Momento certo', maturidade: 'Maturidade digital', comportamento: 'Comportamento' };
+    const pilarColorMap = { dor: '#EF4444', momento: '#F59E0B', maturidade: '#3B82F6', comportamento: '#10B981' };
+    const pilarDescMap = {
+      dor: 'Evidências de que a empresa tem uma dor clara que seu serviço resolve.',
+      momento: 'Sinais de que o lead está aberto a conversar agora.',
+      maturidade: 'Nível de maturidade digital e receptividade a marketing pago.',
+      comportamento: 'Histórico de respostas e engajamento na conversa.',
+    };
+
+    const pilares = ['dor', 'momento', 'maturidade', 'comportamento'].map(k => {
+      const val = sc[k] || 0;
+      const max = pilarMaxMap[k];
+      const pct = Math.min(100, Math.round((val / max) * 100));
+      return `
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <span style="font-size:12px;font-weight:600;color:#E5E5E5">${pilarLabelMap[k]}</span>
+            <span style="font-size:12px;font-family:JetBrains Mono,monospace;font-weight:700;color:${pilarColorMap[k]}">${val}<span style="font-size:10px;color:#525252">/${max}</span></span>
+          </div>
+          <div style="height:8px;background:#1E1E1E;border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${pilarColorMap[k]};border-radius:4px;transition:width 400ms cubic-bezier(0.22,1,0.36,1)"></div>
+          </div>
+          <p style="font-size:11px;color:#525252;margin-top:4px">${pilarDescMap[k]}</p>
+        </div>`;
+    }).join('');
+
+    const antiCurioso = sc.anti_curioso || 0;
+    const antiBar = antiCurioso > 0 ? `
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-1">
+          <span style="font-size:12px;font-weight:600;color:#737373">Penalidade anti-curioso</span>
+          <span style="font-size:12px;font-family:JetBrains Mono,monospace;font-weight:700;color:#EF4444">-${antiCurioso}</span>
+        </div>
+        <div style="height:8px;background:#1E1E1E;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100, antiCurioso*10)}%;background:#525252;border-radius:4px"></div>
+        </div>
+        <p style="font-size:11px;color:#525252;margin-top:4px">Respostas evasivas, objeções prematuras ou sinais negativos.</p>
+      </div>` : '';
+
+    const sinaisLog = sinais.length > 0 ? `
+      <section class="mb-6">
+        <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Log de sinais</h3>
+        <div style="space-y:0">
+          ${sinais.map(s => `
+            <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #1A1A1A">
+              <span style="font-size:10px;font-family:JetBrains Mono,monospace;color:#525252;flex-shrink:0;padding-top:1px;min-width:60px">${s.pilar ? s.pilar.toUpperCase().slice(0,4) : 'INFO'}</span>
+              <span style="font-size:12px;color:#A3A3A3;flex:1">${esc(s.descricao || s.desc || String(s))}</span>
+              ${s.pontos != null ? `<span style="font-size:11px;font-family:JetBrains Mono,monospace;font-weight:700;color:${s.pontos>=0?'#10B981':'#EF4444'};flex-shrink:0">${s.pontos>0?'+':''}${s.pontos}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>` : '';
+
+    const proxAcao = (() => {
+      if (temp === 'prioridade') return { icon:'🔥', texto:'Prioridade máxima — agendar reunião agora.', cor:'#EF4444', bg:'rgba(239,68,68,0.08)', border:'rgba(239,68,68,0.3)' };
+      if (temp === 'qualificado') return { icon:'✅', texto:'Lead qualificado — apresentar proposta e marcar demo.', cor:'#3B82F6', bg:'rgba(59,130,246,0.08)', border:'rgba(59,130,246,0.3)' };
+      if (temp === 'curioso') return { icon:'🤔', texto:'Lead curioso — aprofundar com gancho de dor (D+2).', cor:'#F59E0B', bg:'rgba(245,158,11,0.08)', border:'rgba(245,158,11,0.3)' };
+      return { icon:'❄️', texto:'Lead frio — continuar régua de follow-up ou verificar dados.', cor:'#737373', bg:'rgba(115,115,115,0.06)', border:'rgba(115,115,115,0.2)' };
+    })();
+
+    const semDados = total === 0 && !sc.ultima_atualizacao;
+
+    return `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-4">Temperatura conversacional</h3>
+      ${semDados ? `
+        <div style="text-align:center;padding:32px 16px;color:#525252">
+          <div style="font-size:32px;margin-bottom:8px">🤖</div>
+          <p style="font-size:13px;color:#737373;margin-bottom:4px">Score ainda não calculado</p>
+          <p style="font-size:12px;color:#525252">O agente N8N preenche este campo após a primeira interação com o lead.</p>
+        </div>` : `
+        <div style="display:flex;align-items:center;gap:16px;padding:16px;border-radius:12px;background:${tempBgMap[temp]};border:1px solid ${tempColor}30;margin-bottom:20px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+            <span style="font-size:28px;font-weight:800;font-family:JetBrains Mono,monospace;color:${tempColor};line-height:1">${total}</span>
+            <span style="font-size:10px;color:#737373;font-weight:500">PONTOS</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:${tempColor}20;border:1px solid ${tempColor}40;margin-bottom:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:${tempColor}"></span>
+              <span style="font-size:12px;font-weight:700;color:${tempColor}">${tempLabel}</span>
+            </div>
+            ${sc.ultima_atualizacao ? `<p style="font-size:10px;color:#525252">Atualizado em ${new Date(sc.ultima_atualizacao).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>` : ''}
+          </div>
+        </div>
+        ${pilares}
+        ${antiBar}
+      `}
+    </section>
+
+    ${!semDados ? `
+    <section class="mb-6">
+      <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Próxima ação recomendada</h3>
+      <div style="padding:14px;border-radius:10px;background:${proxAcao.bg};border:1px solid ${proxAcao.border}">
+        <p style="font-size:13px;color:${proxAcao.cor};font-weight:600">${proxAcao.icon} ${proxAcao.texto}</p>
+      </div>
+    </section>
+
+    ${sinaisLog}` : ''}
+    `;
   }
 
   function renderTabDor(l) {
@@ -2141,6 +2823,36 @@
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   }
 
+  // Força envio de todos os leads com dados para o Supabase (sincronização completa)
+  async function forceSyncAll() {
+    if (!CLOUD_MODE) { toast('Supabase não configurado'); return; }
+    const btn = document.getElementById('btn-force-sync');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; }
+    setSyncStatus('Sincronizando…', '#F59E0B');
+
+    const leads = LEADS.leads.filter(l => {
+      const ls = state.leads[l.id];
+      return ls && (ls.status !== 'novo' || (ls.notes||[]).length > 0 ||
+        (ls.activity||[]).length > 0 || ls.followup_start || ls.overrides);
+    });
+
+    let ok = 0, semId = 0;
+    for (const l of leads) {
+      const hadId = !!supabaseIdMap[l.id];
+      await cloudUpsertLead(l.id);
+      if (!hadId && !supabaseIdMap[l.id]) semId++;
+      else ok++;
+      await new Promise(r => setTimeout(r, 80));
+    }
+
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    setSyncStatus('Sincronizado', '#10B981');
+    const msg = semId > 0
+      ? `✓ ${ok} sincronizados · ⚠️ ${semId} sem ID no Supabase`
+      : `✓ ${ok} leads sincronizados com Supabase`;
+    toast(msg);
+  }
+
   // Backup completo do estado em JSON (inclui status, notas, atividade, follow-up, overrides)
   function exportBackupJson() {
     const backup = {
@@ -2241,9 +2953,10 @@
   }
 
   // ==========================================================================
-  // FILTROS (chips + cidade)
+  // FILTROS (chips + dropdowns)
   // ==========================================================================
   function initFilters() {
+    // Chips simples (naoContactados, novosNestaRodada, gmb_alta, tp_alta)
     document.querySelectorAll('.chip[data-filter]').forEach(chip => {
       chip.addEventListener('click', () => {
         const k = chip.dataset.filter;
@@ -2252,11 +2965,46 @@
         renderKanban();
       });
     });
+
+    // Dados do lead — dropdown multi-check (position:fixed para não ficar atrás do kanban)
+    const btnDados   = document.getElementById('btn-dados-filter');
+    const dropDados  = document.getElementById('dados-dropdown');
+    function updateDadosBtn() {
+      const n = dropDados.querySelectorAll('input[data-df]:checked').length;
+      btnDados.textContent = n > 0 ? `Dados (${n}) ▾` : 'Dados do lead ▾';
+      btnDados.classList.toggle('has-active', n > 0);
+    }
+    btnDados.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opening = dropDados.classList.contains('hidden');
+      if (opening) {
+        const r = btnDados.getBoundingClientRect();
+        dropDados.style.top  = (r.bottom + 4) + 'px';
+        dropDados.style.left = r.left + 'px';
+      }
+      dropDados.classList.toggle('hidden');
+    });
+    dropDados.querySelectorAll('input[data-df]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        filters[cb.dataset.df] = cb.checked;
+        updateDadosBtn();
+        renderKanban();
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('dados-filter-wrap').contains(e.target)) {
+        dropDados.classList.add('hidden');
+      }
+    });
+
+    // Follow-up por etapa — select nativo
+    document.getElementById('filter-followup').addEventListener('change', (e) => { filters.followupEtapa = e.target.value; renderKanban(); });
+
     // Nicho select
     const nichos = [...new Set(LEADS.leads.map(l => l.segmento).filter(Boolean))].sort();
     const selNicho = document.getElementById('filter-nicho');
     if (nichos.length <= 1) {
-      selNicho.style.display = 'none'; // esconde se só tem 1 nicho
+      selNicho.style.display = 'none';
     } else {
       nichos.forEach(n => {
         const opt = document.createElement('option');
@@ -2275,9 +3023,19 @@
       sel.appendChild(opt);
     });
     sel.addEventListener('change', (e) => { filters.cidade = e.target.value; renderKanban(); });
+
+    // Limpar filtros
     document.getElementById('btn-clear-filters').addEventListener('click', () => {
-      filters = { ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, followupHoje: false, recentes: false, prio: false, cidade: '', nicho: '', gmb_alta: false, tp_alta: false };
+      filters = {
+        naoContactados: false, novosNestaRodada: false,
+        ig: false, wa: false, dono: false, cnpj: false, meta: false, email: false, prio: false,
+        followupEtapa: '', cidade: '', nicho: '', gmb_alta: false, tp_alta: false,
+        minhasAbordagens: false,
+      };
       document.querySelectorAll('.chip[data-filter]').forEach(c => c.classList.remove('active'));
+      dropDados.querySelectorAll('input[data-df]').forEach(cb => cb.checked = false);
+      updateDadosBtn();
+      document.getElementById('filter-followup').value = '';
       selNicho.value = '';
       sel.value = '';
       renderKanban();
@@ -2459,6 +3217,7 @@
 
     // Segundo passo: mescla estado — cloud prevalece só se tiver dados reais
     const leadsParaPushLocal = [];
+    const leadsNeedingReason = [];
     cloud.forEach(c => {
       const lid = parseInt(c.external_id);
       if (isNaN(lid)) return;
@@ -2479,6 +3238,40 @@
         state.leads[lid].status   = cloudStatus;
         state.leads[lid].notes    = cloudNotes;
         state.leads[lid].activity = cloudActivity;
+      }
+      // Normaliza status N8N que não têm coluna kanban própria
+      if (state.leads[lid].status === 'desqualificado') {
+        state.leads[lid].status = 'perdeu';
+        if (!state.leads[lid].loss_reason) {
+          state.leads[lid].needs_loss_reason = true;
+          leadsNeedingReason.push(lid);
+        }
+        if (!state.leads[lid].activity?.some(a => a.type === 'loss')) {
+          state.leads[lid].activity = state.leads[lid].activity || [];
+          state.leads[lid].activity.unshift({ t: Date.now(), type: 'loss', msg: '🤖 Desqualificado pelo agente N8N — motivo pendente' });
+        }
+      }
+      // historico_resumido é sempre da nuvem (escrito pelo N8N)
+      if (c.historico_resumido) {
+        const tinhaBot = !!state.leads[lid].historico_resumido;
+        state.leads[lid].historico_resumido = c.historico_resumido;
+        // N8N assumiu um lead manual → limpa sub-coluna manual (salvo se controle manual ativo)
+        if (!tinhaBot && state.leads[lid].overrides?.abordado_subcol && !state.leads[lid].overrides?.manual_control) {
+          delete state.leads[lid].overrides.abordado_subcol;
+        }
+      }
+      // is_bot: lido da nuvem (pode ser escrito pelo N8N ou pelo CRM)
+      if (c.is_bot) {
+        state.leads[lid].is_bot = c.is_bot;
+      }
+      if (c.overrides && Object.keys(c.overrides).length > 0) {
+        // Local vence sobre cloud para chaves existentes — garante que ações
+        // recentes do usuário (ex: arraste entre sub-colunas) não sejam
+        // sobrescritas por dados ainda não atualizados no Supabase.
+        state.leads[lid].overrides = { ...(c.overrides || {}), ...(state.leads[lid].overrides || {}) };
+      }
+      if (cloudTemDados) {
+        // já tratado acima
       } else if (localTemDados) {
         // Local tem trabalho mas Supabase está em branco → sobe o local para o Supabase
         leadsParaPushLocal.push(lid);
@@ -2489,6 +3282,9 @@
       if (local) local.novo_nesta_rodada = !!c.novo_nesta_rodada;
     });
 
+    // Recupera followup_start perdido a partir do histórico de atividade
+    repairFollowupStart();
+
     saveState();
     renderKanban();
     renderHeaderStats();
@@ -2497,6 +3293,31 @@
     if (leadsParaPushLocal.length > 0) {
       leadsParaPushLocal.forEach(lid => cloudUpsertLead(lid));
     }
+
+    // Mostra popups sequenciais para leads desqualificados pelo N8N sem motivo definido
+    if (leadsNeedingReason.length > 0) {
+      showN8nLossReasonQueue(leadsNeedingReason.slice());
+    }
+  }
+
+  function showN8nLossReasonQueue(queue) {
+    if (queue.length === 0) return;
+    const lid = queue.shift();
+    const ls = state.leads[lid];
+    const lead = LEADS.leads.find(l => l.id === lid);
+    if (!lead || !ls?.needs_loss_reason) { showN8nLossReasonQueue(queue); return; }
+
+    // Extrai as últimas mensagens do histórico como contexto
+    const hist = ls.historico_resumido || '';
+    const linhas = hist.split('\n').filter(l => l.trim()).slice(-6);
+    const contexto = linhas.join('\n');
+
+    showLossReasonPopup(lid, 'perdeu', 'desqualificado', () => {
+      delete state.leads[lid].needs_loss_reason;
+      saveState();
+      // Próximo da fila após um pequeno delay
+      setTimeout(() => showN8nLossReasonQueue(queue), 300);
+    }, contexto, lead.nome || lead.displayName || `Lead #${lid}`);
   }
 
   // ==========================================================================
@@ -2515,6 +3336,7 @@
     // Botoes do header
     document.getElementById('btn-search').addEventListener('click', openPalette);
     document.getElementById('btn-export').addEventListener('click', exportCsv);
+    document.getElementById('btn-force-sync').addEventListener('click', forceSyncAll);
     document.getElementById('btn-backup').addEventListener('click', exportBackupJson);
     document.getElementById('btn-funnel').addEventListener('click', openFunnelModal);
     document.getElementById('btn-reset').addEventListener('click', openConfirm);
@@ -2534,6 +3356,53 @@
   } else {
     init();
   }
+
+    window.releaseToN8n = function(leadId) {
+      const ls = state.leads[leadId];
+      if (!ls?.overrides) return;
+      delete ls.overrides.manual_control;
+      delete ls.overrides.abordado_subcol;
+      ls.activity = ls.activity || [];
+      ls.activity.unshift({ t: Date.now(), type: 'n8n_release', msg: '🤖 Controle devolvido ao N8N' });
+      saveState();
+      cloudUpsertLead(leadId, { skipStatus: true });
+      renderKanban();
+      const lead = LEADS.leads.find(l => l.id === leadId);
+      if (lead) { renderDossierHead(lead); renderDossierBody(lead); }
+      toast('🤖 Controle devolvido ao N8N');
+    };
+
+    window.takeManualControl = function(leadId) {
+      const ls = state.leads[leadId];
+      if (!ls) return;
+      ls.overrides = ls.overrides || {};
+      ls.overrides.manual_control = true;
+      // Preserva a sub-coluna atual calculada pelo N8N como ponto de partida
+      if (!ls.overrides.abordado_subcol) {
+        ls.overrides.abordado_subcol = getAbordadoSubcol(leadId);
+      }
+      ls.activity = ls.activity || [];
+      ls.activity.unshift({ t: Date.now(), type: 'manual_override', msg: '✋ Controle manual ativado pelo operador' });
+      saveState();
+      cloudUpsertLead(leadId, { skipStatus: true });
+      renderKanban();
+      const lead = LEADS.leads.find(l => l.id === leadId);
+      if (lead) { renderDossierHead(lead); renderDossierBody(lead); }
+      toast('✋ Controle manual ativado');
+    };
+
+  window.openPendingLossReason = function(leadId) {
+    const ls = state.leads[leadId];
+    const lead = LEADS.leads.find(l => l.id === leadId);
+    if (!lead || !ls) return;
+    const hist = ls.historico_resumido || '';
+    const linhas = hist.split('\n').filter(l => l.trim()).slice(-6);
+    showLossReasonPopup(leadId, 'perdeu', 'perdeu', () => {
+      delete ls.needs_loss_reason;
+      saveState();
+      renderKanban();
+    }, linhas.join('\n'), lead.nome || `Lead #${leadId}`);
+  };
 
   // Expõe funções usadas em onclick inline para o escopo global
   window.openEditModal  = openEditModal;
