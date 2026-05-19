@@ -67,9 +67,14 @@ CAMPOS_VOLATEIS = {
     "site",
     "telefone",
     "endereco_completo",
+    "mensagem_wa",
+    # Ângulo de abordagem — gerado pelo Python pipeline, atualizado a cada rodada
+    "angulo",
+    "conteudo_angulo",
+    "resultado_alvo",
 }
 
-# Campos que NUNCA são tocados em re-execuções (trabalho do operador)
+# Campos que NUNCA são tocados em re-execuções (trabalho do operador / N8N)
 CAMPOS_PROTEGIDOS = {
     "status",
     "notes",
@@ -77,6 +82,15 @@ CAMPOS_PROTEGIDOS = {
     "rapport_humano",
     "gancho_dor",
     "first_seen_at",
+    "historico_resumido",   # gravado pelo N8N, Python nunca sobrescreve
+    "score_conversacional", # gravado pelo N8N, Python nunca sobrescreve
+}
+
+# Default para score_conversacional quando o lead ainda não tem
+SC_DEFAULT = {
+    "dor": 0, "momento": 0, "maturidade": 0, "comportamento": 0,
+    "anti_curioso": 0, "total": 0, "temperatura": "frio",
+    "sinais": [], "ultima_atualizacao": None,
 }
 
 
@@ -230,7 +244,12 @@ def montar_payload_insert(lead: dict, agencia: str, segmento: str, cidade: str |
         "meta_ads_count": int(lead.get("meta_ads_count") or 0),
         "rapport_humano": lead.get("rapport_humano") or [],
         "gancho_dor": lead.get("gancho_dor") or [],
+        "mensagem_wa": lead.get("mensagem_wa"),
+        "angulo": lead.get("angulo"),
+        "conteudo_angulo": lead.get("conteudo_angulo"),
+        "resultado_alvo": lead.get("resultado_alvo"),
         "priority_score": float(lead.get("priority_score") or 0),
+        "score_conversacional": lead.get("score_conversacional") or dict(SC_DEFAULT),
         "status": "novo",
         "notes": [],
         "activity": [],
