@@ -76,6 +76,16 @@ def main() -> int:
 
     cloud_on = bool(supabase_url and supabase_key and agencia)
 
+    # Garante que cada lead tem score_conversacional com defaults (campo gravado pelo N8N)
+    SC_DEFAULT = {
+        "dor": 0, "momento": 0, "maturidade": 0, "comportamento": 0,
+        "anti_curioso": 0, "total": 0, "temperatura": "frio",
+        "sinais": [], "ultima_atualizacao": None,
+    }
+    for lead in data.get("leads", []):
+        if "score_conversacional" not in lead or lead["score_conversacional"] is None:
+            lead["score_conversacional"] = dict(SC_DEFAULT)
+
     leads_json = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
     html = tpl
