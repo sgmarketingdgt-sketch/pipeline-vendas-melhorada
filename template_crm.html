@@ -767,7 +767,8 @@
     // Controle manual explícito tem prioridade absoluta (inclusive sobre N8N)
     if (ov.manual_control && ov.abordado_subcol) return ov.abordado_subcol;
     // Lead gerenciado pelo N8N — posição calculada pelo histórico
-    if (ls.historico_resumido) {
+    // Se manual_control ativo, ignora N8N e usa posição manual
+    if (ls.historico_resumido && !ov.manual_control) {
       const d = getN8nLastDay(ls.historico_resumido);
       if (d === null) return 'd0';   // nada enviado ainda
       if (d <= 1)     return 'd2';   // abordagem inicial enviada, aguardando D+2
@@ -777,11 +778,11 @@
     }
     // Lead manual — posição salva pelo arraste
     if (ov.abordado_subcol) return ov.abordado_subcol;
-    // Fallback: followup_sent
+    // Fallback: followup_sent — cada etapa enviada avança para a próxima sub-coluna
     const sent = ls.followup_sent || {};
-    if (sent[4]) return 'd7';
-    if (sent[3]) return 'd5';
-    if (sent[2]) return 'd2';
+    if (sent[3]) return 'd7';   // D+5 enviado → aguardando D+7
+    if (sent[2]) return 'd5';   // D+2 enviado → aguardando D+5
+    if (sent[1]) return 'd2';   // D0 enviado  → aguardando D+2
     return 'd0';
   }
 
@@ -1661,11 +1662,14 @@
     // Qualificado/respondeu/agendado/ganhou/perdeu não exibem régua
     if (ls.status !== 'abordado') return '';
 
-    // Lead gerenciado pelo N8N — badge baseado no historico_resumido
-    if (ls.historico_resumido && ls.status === 'abordado') {
+    // Lead gerenciado pelo N8N (sem controle manual) — badge baseado no historico_resumido
+    if (ls.historico_resumido && !ls.overrides?.manual_control && ls.status === 'abordado') {
       const lastDay = getN8nLastDay(ls.historico_resumido);
       const N8N_DAYS = [2, 5, 7];
-      if (lastDay === null || lastDay <= 1) {
+      if (lastDay === null) {
+        return `<div class="fu-badge ok mt-1" style="color:#60A5FA;border-color:rgba(59,130,246,0.3)">🤖 Aguardando abordagem inicial</div>`;
+      }
+      if (lastDay <= 1) {
         return `<div class="fu-badge ok mt-1" style="color:#60A5FA;border-color:rgba(59,130,246,0.3)">🤖 Abordagem enviada · aguarda D+2</div>`;
       }
       const nextDay = N8N_DAYS.find(d => d > lastDay);
@@ -1827,10 +1831,12 @@
       </section>`;
     }
 
-    // Lead gerenciado pelo N8N → mostra painel de controle + timeline do agente
-    if (ls.historico_resumido) {
+    // Lead gerenciado pelo N8N sem controle manual → só painel + timeline do agente
+    if (ls.historico_resumido && !manualCtrl) {
       return painelControle + renderHistoricoN8N(ls.historico_resumido);
     }
+    // Lead N8N com controle manual ativo → painel + régua manual + histórico do bot abaixo
+    const historicoN8N = ls.historico_resumido ? renderHistoricoN8N(ls.historico_resumido) : '';
 
     const sent = (ls.followup_sent || {});
     const baseTs = ls.followup_start;
@@ -1905,11 +1911,11 @@
       </div>`;
     }).join('');
 
-    return `<section class="mb-6">
+    return painelControle + `<section class="mb-6">
       <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-1">Régua de Follow-up</h3>
       <p class="text-[11px] text-ink-faded mb-4">D0 em ${fmtDateShort(baseTs)} · todas as datas calculadas a partir daí</p>
       <div>${stepsHtml}</div>
-    </section>`;
+    </section>` + historicoN8N;
   }
 
   function copyFuMsg(id) {
@@ -1954,9 +1960,14 @@
     // Avança para a próxima sub-coluna automaticamente (etapa 4 = D+7, régua encerra)
     const SUBCOL_ADVANCE = { 1: 'd2', 2: 'd5', 3: 'd7' };
     const nextSubcol = stepN < 4 ? SUBCOL_ADVANCE[stepN] : null;
-    if (nextSubcol && ls.status === 'abordado') {
+    if (ls.status === 'abordado') {
       ls.overrides = ls.overrides || {};
-      ls.overrides.abordado_subcol = nextSubcol;
+      if (nextSubcol) ls.overrides.abordado_subcol = nextSubcol;
+      // Se lead tem histórico N8N, ativar manual_control para evitar conflito de posição
+      if (ls.historico_resumido && !ls.overrides.manual_control) {
+        ls.overrides.manual_control = true;
+        ls.activity.unshift({ t: Date.now(), type: 'manual_override', msg: '✋ Controle manual ativado — régua manual assumida pelo operador' });
+      }
     }
     const nextLbl = nextSubcol ? STEP_LABEL[stepN + 1] : null;
     ls.activity.unshift({ t: Date.now(), type: 'followup', msg: `${stepCode} — ${stepLabel} enviado${nextLbl ? ` → avançou para ${nextLbl}` : ' → régua concluída'}` });
