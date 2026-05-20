@@ -831,7 +831,8 @@
       const leadsInStatus = LEADS.leads.filter(l => {
         const s = state.leads[l.id].status;
         const matchStatus = s === status.id ||
-          (status.id === 'respondeu' && (s === 'qualificando' || s === 'aguardando_decisor' || s === 'aguardando_contato'));
+          (status.id === 'respondeu' && (s === 'qualificando' || s === 'aguardando_decisor' || s === 'aguardando_contato')) ||
+          (status.id === 'novo' && s === 'erro_whatsapp');
         return matchStatus && matchesLead(l);
       });
       col.innerHTML = `
@@ -1060,6 +1061,7 @@
     'aguardando_decisor': '⏳ Aguard. Decisor',
     'aguardando_contato': '📞 Aguard. Contato',
     'desqualificado':     '❌ Desqualificado',
+    'erro_whatsapp':      '⚠️ Erro WA',
   };
 
   function renderDossierHead(lead) {
