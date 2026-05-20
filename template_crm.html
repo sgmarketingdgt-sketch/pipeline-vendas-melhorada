@@ -515,6 +515,10 @@
       novo_nesta_rodada: stillNovoFlag,
       overrides:         ls.overrides || {},
       is_bot:            ls.is_bot   || null,
+      followup_start:    ls.followup_start    || null,
+      followup_sent:     ls.followup_sent     || {},
+      loss_reason:       ls.loss_reason       || null,
+      needs_loss_reason: ls.needs_loss_reason || false,
     };
     // Status só vai ao Supabase quando explicitamente solicitado
     // (evita que o CRM sobrescreva status gerenciados pelo N8N)
@@ -712,7 +716,14 @@
         if (!ls.followup_start) return false;
         if (ls.historico_resumido) {
           const lastDay = getN8nLastDay(ls.historico_resumido);
-          return lastDay === null || lastDay < 7;
+          if (lastDay !== null && lastDay >= 7) return false; // régua N8N completa
+          const baseTs = ls.followup_start;
+          if (!baseTs) return false; // sem data base → não aparece no filtro
+          const N8N_DAYS_FLT = [2, 5, 7];
+          const nextDay = (lastDay === null || lastDay <= 1) ? 2 : (N8N_DAYS_FLT.find(d => d > lastDay) || null);
+          if (!nextDay) return false;
+          const dueTs = baseTs + nextDay * 86400000;
+          return isToday(dueTs) || isPast(dueTs);
         }
         const fu = getFollowupStatus(lead.id);
         if (!fu || fu.nextStep === null) return false;
@@ -939,6 +950,9 @@
   // ==========================================================================
   function initDragDrop() {
     document.querySelectorAll('.kanban-col-body').forEach(el => {
+      // renderKanban() recria os nós a cada chamada, então não há acumulação real;
+      // o guard abaixo é apenas defensivo para futuras refatorações que reutilizem nós.
+      Sortable.get(el)?.destroy();
       Sortable.create(el, {
         group: 'kanban',
         animation: 180,
@@ -1259,7 +1273,7 @@
       </div>
       <div class="info-row">
         <span class="info-k">Endereco</span>
-        <span class="info-v">${esc(l.endereco_completo || '—')}</span>
+        <span class="info-v">${esc(m.endereco_completo || l.endereco_completo || '—')}</span>
       </div>
       <div class="info-row">
         <span class="info-k">Site</span>
@@ -1428,7 +1442,7 @@
             <span style="font-size:11px;font-family:JetBrains Mono,monospace;color:#737373">-${antiCurioso}</span>
           </div>
           <div style="height:6px;background:#1E1E1E;border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${Math.min(100, antiCurioso*10)}%;background:#525252;border-radius:3px"></div>
+            <div style="height:100%;width:${Math.min(100, Math.round(antiCurioso / 20 * 100))}%;background:#525252;border-radius:3px"></div>
           </div>
         </div>` : '';
       return `
@@ -1564,7 +1578,7 @@
     'Outro',
   ];
 
-  function fmtDate(ts) {
+  function fmtDateShort(ts) {
     if (!ts) return '—';
     const d = new Date(ts);
     return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -1611,7 +1625,7 @@
     };
   }
 
-  const CONCLUDED_STATUSES = ['ganhou', 'perdeu', 'agendado'];
+  const CONCLUDED_STATUSES = ['ganhou', 'perdeu', 'agendado', 'sem_resposta', 'qualificado'];
 
   // Lê o último dia enviado pelo N8N no historico_resumido
   function getN8nLastDay(historico) {
@@ -1643,14 +1657,11 @@
     // Badge de follow-up só faz sentido para leads em abordado
     // Qualificado/respondeu/agendado/ganhou/perdeu não exibem régua
     if (ls.status !== 'abordado') return '';
-    if (ls.status === 'respondeu' && ls.is_bot) {
-      return `<div class="fu-badge" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);color:#60A5FA;margin-top:5px">→ Tentar outro canal</div>`;
-    }
 
     // Lead gerenciado pelo N8N — badge baseado no historico_resumido
     if (ls.historico_resumido && ls.status === 'abordado') {
       const lastDay = getN8nLastDay(ls.historico_resumido);
-      const N8N_DAYS = [2, 3, 5, 7];
+      const N8N_DAYS = [2, 5, 7];
       if (lastDay === null || lastDay <= 1) {
         return `<div class="fu-badge ok mt-1" style="color:#60A5FA;border-color:rgba(59,130,246,0.3)">🤖 Abordagem enviada · aguarda D+2</div>`;
       }
@@ -1667,7 +1678,7 @@
       return `<div class="fu-badge done mt-1">Régua concluída</div>`;
     }
     const lbl = STEP_LABEL[fu.nextStep] || `Etapa ${fu.nextStep}`;
-    const dateStr = fmtDate(fu.dueTs);
+    const dateStr = fmtDateShort(fu.dueTs);
     if (fu.overdue) {
       return `<div class="fu-badge overdue">${lbl} · ${dateStr} · atrasado</div>`;
     }
@@ -1680,8 +1691,8 @@
   function getFuMessage(lead, stepN) {
     const ls = state.leads[lead.id];
     const gancho = lead.gancho_dor || [];
-    const dono = (lead.dono || '').split(' ')[0] || lead.nome.split(' ')[0];
-    const nome = lead.nome;
+    const nome = lead.nome || '';
+    const dono = (lead.dono || '').split(' ')[0] || nome.split(' ')[0] || 'você';
     if (stepN === 1) return lead.mensagem_wa || (gancho[0] || '').replace(/^\[[^\]]+\]\s*/, '');
     if (stepN === 2) {
       // use DOR angle
@@ -1813,9 +1824,9 @@
       </section>`;
     }
 
-    // Lead gerenciado pelo N8N → mostra timeline do agente
+    // Lead gerenciado pelo N8N → mostra painel de controle + timeline do agente
     if (ls.historico_resumido) {
-      return renderHistoricoN8N(ls.historico_resumido);
+      return painelControle + renderHistoricoN8N(ls.historico_resumido);
     }
 
     const sent = (ls.followup_sent || {});
@@ -1835,7 +1846,7 @@
         <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
         <div style="padding:12px 14px;background:#0F1A0F;border:1px solid #1A3A1A;border-radius:10px;margin-bottom:12px">
           <p style="font-size:12px;color:#34D399;font-weight:600;margin:0 0 4px">✅ Lead avançou na régua</p>
-          <p style="font-size:12px;color:#737373;margin:0">Régua iniciada em ${fmtDate(baseTs)}${etapasFeitasLabels.length ? ` · etapas enviadas: ${etapasFeitasLabels.join(', ')}` : ''}</p>
+          <p style="font-size:12px;color:#737373;margin:0">Régua iniciada em ${fmtDateShort(baseTs)}${etapasFeitasLabels.length ? ` · etapas enviadas: ${etapasFeitasLabels.join(', ')}` : ''}</p>
         </div>
       </section>`;
     }
@@ -1864,8 +1875,8 @@
       // Data exibida: se enviado → timestamp real; senão → data calculada do D0
       const sentTs   = sent[step.n];
       const dateInfo = isSent
-        ? `<span style="color:#525252">enviado ${fmtDate(sentTs)}</span>`
-        : `<span style="color:${isOverdue ? '#F87171' : isToday_ ? '#FBBF24' : '#525252'}">${lbl} · ${fmtDate(dueTsD0)}${isOverdue ? ' · ⚠️ atrasado' : isToday_ ? ' · hoje' : ''}</span>`;
+        ? `<span style="color:#525252">enviado ${fmtDateShort(sentTs)}</span>`
+        : `<span style="color:${isOverdue ? '#F87171' : isToday_ ? '#FBBF24' : '#525252'}">${lbl} · ${fmtDateShort(dueTsD0)}${isOverdue ? ' · ⚠️ atrasado' : isToday_ ? ' · hoje' : ''}</span>`;
 
       const msg   = getFuMessage(lead, step.n);
       const msgId = `fu-msg-${lead.id}-${step.n}`;
@@ -1893,7 +1904,7 @@
 
     return `<section class="mb-6">
       <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-1">Régua de Follow-up</h3>
-      <p class="text-[11px] text-ink-faded mb-4">D0 em ${fmtDate(baseTs)} · todas as datas calculadas a partir daí</p>
+      <p class="text-[11px] text-ink-faded mb-4">D0 em ${fmtDateShort(baseTs)} · todas as datas calculadas a partir daí</p>
       <div>${stepsHtml}</div>
     </section>`;
   }
@@ -1937,8 +1948,9 @@
     const stepObj   = FU_STEPS.find(s => s.n === stepN);
     const stepCode  = STEP_LABEL[stepN] || `Etapa ${stepN}`;
     const stepLabel = stepObj?.label || stepCode;
-    // Avança para a próxima sub-coluna automaticamente
-    const nextSubcol = { 1: 'd2', 2: 'd5', 3: 'd7' }[stepN];
+    // Avança para a próxima sub-coluna automaticamente (etapa 4 = D+7, régua encerra)
+    const SUBCOL_ADVANCE = { 1: 'd2', 2: 'd5', 3: 'd7' };
+    const nextSubcol = stepN < 4 ? SUBCOL_ADVANCE[stepN] : null;
     if (nextSubcol && ls.status === 'abordado') {
       ls.overrides = ls.overrides || {};
       ls.overrides.abordado_subcol = nextSubcol;
@@ -2225,33 +2237,35 @@
     ls.overrides = ls.overrides || {};
 
     const get = id => (document.getElementById(id)?.value || '').trim();
+    // Grava o valor se preenchido; remove a chave do override se apagado (evita badge "editado" preso)
+    const set = (key, val) => { if (val) ls.overrides[key] = val; else delete ls.overrides[key]; };
 
     // Nome
-    ls.overrides.nome               = get('ef-nome');
+    set('nome',               get('ef-nome'));
     // Cadastro
-    ls.overrides.cnpj               = get('ef-cnpj');
-    ls.overrides.razao_social       = get('ef-razao');
-    ls.overrides.nome_fantasia      = get('ef-fantasia');
-    ls.overrides.segmento           = get('ef-segmento');
+    set('cnpj',               get('ef-cnpj'));
+    set('razao_social',       get('ef-razao'));
+    set('nome_fantasia',      get('ef-fantasia'));
+    set('segmento',           get('ef-segmento'));
     // Contato
-    ls.overrides.telefone           = get('ef-tel');
-    ls.overrides.whatsapp_numero    = get('ef-wa').replace(/\D/g, '');
-    ls.overrides.email              = get('ef-email');
-    ls.overrides.site               = get('ef-site');
-    ls.overrides.dono               = get('ef-dono');
+    set('telefone',           get('ef-tel'));
+    set('whatsapp_numero',    get('ef-wa').replace(/\D/g, ''));
+    set('email',              get('ef-email'));
+    set('site',               get('ef-site'));
+    set('dono',               get('ef-dono'));
     // Localização
-    ls.overrides.cidade             = get('ef-cidade');
-    ls.overrides.bairro             = get('ef-bairro');
-    ls.overrides.endereco_completo  = get('ef-endereco');
+    set('cidade',             get('ef-cidade'));
+    set('bairro',             get('ef-bairro'));
+    set('endereco_completo',  get('ef-endereco'));
     // Instagram
-    ls.overrides.instagram_local_url  = get('ef-ig-local');
-    ls.overrides.instagram_dono_url   = get('ef-ig-dono-url');
-    ls.overrides.instagram_dono_nome  = get('ef-ig-dono-nome');
-    ls.overrides.instagram_dono_bio   = get('ef-ig-dono-bio');
-    ls.overrides.instagram_decisor_url  = get('ef-ig-dec-url');
-    ls.overrides.instagram_decisor_nome = get('ef-ig-dec-nome');
-    ls.overrides.instagram_decisor_bio  = get('ef-ig-dec-bio');
-    ls.overrides.max_stage              = get('ef-max-stage');
+    set('instagram_local_url',    get('ef-ig-local'));
+    set('instagram_dono_url',     get('ef-ig-dono-url'));
+    set('instagram_dono_nome',    get('ef-ig-dono-nome'));
+    set('instagram_dono_bio',     get('ef-ig-dono-bio'));
+    set('instagram_decisor_url',  get('ef-ig-dec-url'));
+    set('instagram_decisor_nome', get('ef-ig-dec-nome'));
+    set('instagram_decisor_bio',  get('ef-ig-dec-bio'));
+    set('max_stage',              get('ef-max-stage'));
 
     ls.activity = ls.activity || [];
     ls.activity.unshift({ t: Date.now(), type: 'edit', msg: 'Dados do lead editados manualmente' });
@@ -2324,7 +2338,7 @@
           <span style="font-size:12px;font-family:JetBrains Mono,monospace;font-weight:700;color:#EF4444">-${antiCurioso}</span>
         </div>
         <div style="height:8px;background:#1E1E1E;border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(100, antiCurioso*10)}%;background:#525252;border-radius:4px"></div>
+          <div style="height:100%;width:${Math.min(100, Math.round(antiCurioso / 20 * 100))}%;background:#525252;border-radius:4px"></div>
         </div>
         <p style="font-size:11px;color:#525252;margin-top:4px">Respostas evasivas, objeções prematuras ou sinais negativos.</p>
       </div>` : '';
@@ -2619,7 +2633,7 @@
   // EXPORT CSV
   // ==========================================================================
   function exportCsv() {
-    const headers = ['id','segmento','nome','dono','cnpj','cidade','bairro','telefone','whatsapp','wa_ativo','instagram','site','email','status','motivo_perda','notas','historico_atividade','follow_up_inicio','score_prioridade'];
+    const headers = ['id','segmento','nome','dono','cnpj','cidade','bairro','telefone','whatsapp','wa_ativo','instagram','site','email','status','motivo_perda','notas','historico_atividade','follow_up_inicio','score_prioridade','score_conversacional','temperatura','subcol_followup','etapas_enviadas'];
     const rows = LEADS.leads.map(l => {
       const s = state.leads[l.id];
       const m = mergeOverrides(l);
@@ -2629,6 +2643,9 @@
         return `[${d}] ${a.msg || ''}`;
       }).join(' | ');
       const fuStart = s.followup_start ? new Date(s.followup_start).toLocaleDateString('pt-BR') : '';
+      const sc          = l.score_conversacional || {};
+      const subcol      = (s.status === 'abordado') ? getAbordadoSubcol(l.id) : '';
+      const sentSteps   = Object.keys(s.followup_sent || {}).sort().join('+');
       return [
         l.id,
         l.segmento || '',
@@ -2649,6 +2666,10 @@
         activity,
         fuStart,
         Math.round(l.priority_score || 0),
+        sc.total || 0,
+        sc.temperatura || '',
+        subcol,
+        sentSteps,
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
     });
     const csv = '\ufeff' + headers.join(',') + '\n' + rows.join('\n');
@@ -2673,6 +2694,7 @@
     abordado:     'abordado',
     sem_resposta: 'abordado',
     respondeu:    'engajado',
+    qualificado:  'engajado',
     agendado:     'reuniao',
     ganhou:       'fechado',
     perdeu:       null,  // determinado pelo histórico ou override
@@ -2936,11 +2958,22 @@
     state = initialState();
     saveState();
     if (CLOUD_MODE && supabaseClient) {
-      // Reset cloud: zera status/notes/activity para todos os leads desta agência
+      // Reset cloud: zera todos os campos de trabalho do operador
       bumpPending(1);
       supabaseClient
         .from('leads')
-        .update({ status: 'novo', notes: [], activity: [] })
+        .update({
+          status:            'novo',
+          notes:             [],
+          activity:          [],
+          overrides:         {},
+          followup_start:    null,
+          followup_sent:     {},
+          loss_reason:       null,
+          needs_loss_reason: false,
+          is_bot:            null,
+          novo_nesta_rodada: true,
+        })
         .eq('agencia', CRM_CONFIG.agencia)
         .then(() => bumpPending(-1))
         .catch(e => { console.error('[cloud] reset falhou', e); bumpPending(-1); });
@@ -3194,15 +3227,18 @@
       if (!localStorage.getItem(backupKey)) {
         localStorage.setItem(backupKey, JSON.stringify(state));
       }
-      // Mantém apenas os últimos 7 dias — limpa backups antigos
+      // Mantém apenas os últimos 7 dias — coleta chaves primeiro para evitar
+      // pular itens ao remover durante iteração (índices deslocam com removeItem)
+      const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k && k.startsWith(LS_KEY + '_bkp_')) {
           const d = k.replace(LS_KEY + '_bkp_', '');
           const diasAtras = (Date.now() - new Date(d).getTime()) / 86400000;
-          if (diasAtras > 7) localStorage.removeItem(k);
+          if (diasAtras > 7) keysToRemove.push(k);
         }
       }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
     } catch (e) { /* localStorage pode estar cheio — ignora */ }
   }
 
@@ -3291,6 +3327,12 @@
         state.leads[lid].notes    = cloudNotes;
         state.leads[lid].activity = cloudActivity;
       }
+      // Restaura campos de follow-up e perda da nuvem (só se a nuvem tiver valor)
+      if (c.followup_start)                state.leads[lid].followup_start = c.followup_start;
+      if (c.followup_sent && Object.keys(c.followup_sent).length > 0)
+                                           state.leads[lid].followup_sent  = { ...(c.followup_sent || {}), ...(state.leads[lid].followup_sent || {}) };
+      if (c.loss_reason)                   state.leads[lid].loss_reason    = c.loss_reason;
+      if (c.needs_loss_reason)             state.leads[lid].needs_loss_reason = c.needs_loss_reason;
       // Normaliza status N8N que não têm coluna kanban própria
       if (state.leads[lid].status === 'desqualificado') {
         state.leads[lid].status = 'perdeu';
@@ -3331,7 +3373,11 @@
       // Se ambos estão vazios, mantém o local (nenhuma mudança necessária)
 
       const local = LEADS.leads.find(l => l.id === lid);
-      if (local) local.novo_nesta_rodada = !!c.novo_nesta_rodada;
+      if (local) {
+        local.novo_nesta_rodada = !!c.novo_nesta_rodada;
+        // score_conversacional é gravado pelo N8N → sempre prevalece o valor da nuvem
+        if (c.score_conversacional) local.score_conversacional = c.score_conversacional;
+      }
     });
 
     // Recupera followup_start perdido a partir do histórico de atividade

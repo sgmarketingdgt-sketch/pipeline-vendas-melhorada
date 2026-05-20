@@ -44,6 +44,12 @@ dist/
 playwright-report/
 test-results/
 
+# Node
+node_modules/
+
+# Sub-repositório separado (sgmarketingdgt-sketch/n8n-agentes)
+n8n/
+
 # Vercel
 .vercel/
 

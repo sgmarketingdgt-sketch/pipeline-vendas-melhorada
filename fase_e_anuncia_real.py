@@ -66,110 +66,208 @@ def check_meta_ads(page, nome):
     except Exception as e:
         return {"status": "nao_verificado", "count": 0, "metodo": "erro", "erro": str(e)[:120]}
 
-def check_google_ads_transparency(page, nome):
-    """Google Ads Transparency Center. Se bloquear, retorna nao_verificado."""
-    q = clean_name_for_search(nome)
-    url = f"https://adstransparency.google.com/?region=BR&domain=&authuser=0"  # homepage
-    # O GATC nao tem URL direta de busca na homepage. Vou buscar via input.
+def _extrair_dominio(site: str) -> str | None:
+    """Extrai domínio limpo de uma URL de site."""
+    if not site:
+        return None
+    m = re.search(r'(?:https?://)?(?:www\.)?([a-zA-Z0-9][a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})', site)
+    return m.group(1).lower() if m else None
+
+
+def _gatc_search(page, query: str, by_domain: bool) -> dict:
+    """Faz uma busca no Google Ads Transparency Center e retorna resultado."""
+    kind = "dominio" if by_domain else "nome"
+    if by_domain:
+        url = f"https://adstransparency.google.com/?region=BR&domain={quote(query)}"
+    else:
+        url = f"https://adstransparency.google.com/advertiser?region=BR&q={quote(query)}"
     try:
-        page.goto(url, wait_until="domcontentloaded", timeout=25000)
-        page.wait_for_timeout(2000)
-        # Tenta achar campo de busca e digitar
-        search_url = f"https://adstransparency.google.com/advertiser?region=BR&domain=&q={quote(q)}"
-        page.goto(search_url, wait_until="domcontentloaded", timeout=20000)
-        page.wait_for_timeout(2500)
-        content = page.content()
-        if "Checking your browser" in content or "sorry" in content.lower()[:200]:
-            return {"status": "nao_verificado", "metodo": "bloqueio"}
-        # Google mostra "No results" se nao achou
-        if "no results" in content.lower() or "sem resultados" in content.lower() or "nao encontramos" in content.lower():
-            return {"status": "nao", "metodo": "texto"}
-        # Se mostra cards de anunciante, marca sim
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        # Aguarda React/SPA carregar — tenta networkidle, cai para timeout fixo
         try:
-            n = page.locator('a[href*="/advertiser/"]').count()
-        except:
-            n = 0
-        if n > 0:
-            return {"status": "sim", "count": n, "metodo": "links_anunciantes"}
-        return {"status": "nao", "count": 0, "metodo": "fallback"}
+            page.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            page.wait_for_timeout(5000)
+
+        content = page.content()
+        if "Checking your browser" in content or "cf-challenge" in content.lower():
+            return {"status": "nao_verificado", "metodo": "bloqueio"}
+
+        texto = content.lower()
+
+        # Sinais textuais de ausência de resultados
+        sem_resultado_patterns = [
+            "no results", "sem resultados", "nenhum resultado",
+            "no ads found", "no advertisers found",
+            "couldn't find any", "não encontramos",
+        ]
+        if any(p in texto for p in sem_resultado_patterns):
+            return {"status": "nao", "count": 0, "metodo": f"texto_{kind}"}
+
+        # Contador textual — ex: "123 anunciantes" ou "45 results"
+        m = re.search(r'(\d[\d\.,]*)\s+(?:anunciante|advertiser|result)', texto, re.IGNORECASE)
+        if m:
+            count = int(re.sub(r"[^\d]", "", m.group(1)))
+            if count > 0:
+                return {"status": "sim", "count": count, "metodo": f"contador_texto_{kind}"}
+            return {"status": "nao", "count": 0, "metodo": f"contador_texto_{kind}"}
+
+        # Seletores CSS atualizados (GATC usa Angular/Shadow DOM + atributos custom)
+        selectors = [
+            'a[href*="/advertiser/AR"]',           # links de anunciantes (IDs começam com AR)
+            'mat-card',                             # Angular Material cards
+            '[class*="advertiser-card"]',
+            '[class*="AdCard"]',
+            'tpc-advertiser-result',               # custom element do GATC
+            'div[role="listitem"]',
+        ]
+        total = 0
+        for sel in selectors:
+            try:
+                n = page.locator(sel).count()
+                if n > 0:
+                    total = n
+                    break
+            except Exception:
+                continue
+
+        if total > 0:
+            return {"status": "sim", "count": total, "metodo": f"cards_{kind}"}
+
+        # Se a página tem conteúdo substancial mas sem sinais claros → nao_verificado
+        if len(texto) < 500:
+            return {"status": "nao_verificado", "metodo": f"pagina_vazia_{kind}"}
+
+        return {"status": "nao", "count": 0, "metodo": f"texto_sem_resultado_{kind}"}
     except Exception as e:
         return {"status": "nao_verificado", "metodo": "erro", "erro": str(e)[:120]}
 
+
+def check_google_ads_transparency(page, nome, site=None):
+    """Google Ads Transparency Center.
+    Tenta por domínio do site primeiro (mais preciso), depois por nome.
+    Retorna nao_verificado se bloquear.
+    """
+    dominio = _extrair_dominio(site)
+    if dominio:
+        result = _gatc_search(page, dominio, by_domain=True)
+        if result["status"] != "nao_verificado":
+            return result
+        time.sleep(1.0)
+    # Fallback: busca por nome
+    return _gatc_search(page, clean_name_for_search(nome), by_domain=False)
+
 def main():
     import csv
-    # Sempre prefere leads_merged.csv (rodada atual); leads_final.json pode ter outro segmento
+
+    # ── Carrega cache existente (para não re-verificar leads já processados) ──
+    cache: dict[int, dict] = {}
+    if OUT.exists():
+        with open(OUT, "r", encoding="utf-8") as fh:
+            for r in json.load(fh):
+                cache[r["id"]] = r
+
+    # ── Fonte de leads: CSV da rodada (preferência) ou leads_final.json ──
     if CSV_IN.exists():
-        leads = []
+        leads_raw = []
         with open(CSV_IN, "r", encoding="utf-8-sig") as fh:
             for i, row in enumerate(csv.DictReader(fh), 1):
                 if i > 50: break
-                leads.append({"id": i, "nome": row["nome"]})
+                leads_raw.append({"id": i, "nome": row["nome"], "site": row.get("site", "")})
     elif LEADS_JSON.exists():
         with open(LEADS_JSON, "r", encoding="utf-8") as fh:
             data = json.load(fh)
-        leads = data["leads"]
+        leads_raw = [{"id": l["id"], "nome": l.get("nome",""), "site": l.get("site","")} for l in data.get("leads", [])]
     else:
-        leads = []
+        leads_raw = []
+
     # CLI: python fase_e_anuncia_real.py 10 -> testa so 10 leads
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else len(leads)
-    leads = leads[:limit]
-    print(f"Validando anuncios REAIS de {len(leads)} leads via Playwright (modo {'TESTE' if limit < 50 else 'COMPLETO'})...\n")
+    limit = int(sys.argv[1]) if len(sys.argv) > 1 else len(leads_raw)
+    leads_raw = leads_raw[:limit]
 
+    # Separa: já verificados (anuncia_google != nao_verificado/None) vs. pendentes
+    pendentes = []
+    for lead in leads_raw:
+        cached = cache.get(lead["id"])
+        ja_ok = (cached
+                 and cached.get("anuncia_google") in ("sim", "nao")
+                 and not cached.get("google_metodo", "").startswith("fallback"))
+        if ja_ok:
+            pass  # mantém do cache, não refaz
+        else:
+            pendentes.append(lead)
+
+    pulados = len(leads_raw) - len(pendentes)
+    print(f"Validando anúncios REAIS via Playwright")
+    print(f"  Total leads : {len(leads_raw)}")
+    print(f"  Já verificados (cache): {pulados}")
+    print(f"  A processar agora : {len(pendentes)}\n")
+
+    novos: list[dict] = []
+    if pendentes:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+            context = browser.new_context(
+                user_agent=UA,
+                locale="pt-BR",
+                viewport={"width": 1366, "height": 900},
+            )
+            context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'languages', {get: () => ['pt-BR', 'pt', 'en-US']});
+            """)
+            page = context.new_page()
+
+            for i, lead in enumerate(pendentes, 1):
+                nome = lead["nome"]
+                site = lead.get("site") or ""
+                print(f"  [{i:2d}/{len(pendentes)}] {nome[:50]:50s}", end=" ", flush=True)
+                meta = check_meta_ads(page, nome)
+                time.sleep(2.0)
+                goog = check_google_ads_transparency(page, nome, site=site)
+                time.sleep(1.5)
+                row = {
+                    "id": lead["id"],
+                    "nome": nome,
+                    "anuncia_meta": meta["status"],
+                    "meta_ads_count": meta.get("count", 0),
+                    "meta_metodo": meta["metodo"],
+                    "anuncia_google": goog["status"],
+                    "google_metodo": goog.get("metodo", ""),
+                }
+                novos.append(row)
+                cache[lead["id"]] = row
+                m_tag = meta["status"][:3].upper()
+                g_tag = goog["status"][:3].upper()
+                extra = f"({meta.get('count',0)})" if meta["status"] == "sim" else ""
+                print(f"Meta: {m_tag}{extra:<6} Google: {g_tag}")
+
+            browser.close()
+
+    # Reconstrói lista final (cache completo, ordem original)
     results = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
-        )
-        context = browser.new_context(
-            user_agent=UA,
-            locale="pt-BR",
-            viewport={"width": 1366, "height": 900},
-        )
-        # anti-detect basico
-        context.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            Object.defineProperty(navigator, 'languages', {get: () => ['pt-BR', 'pt', 'en-US']});
-        """)
-        page = context.new_page()
-
-        for i, lead in enumerate(leads, 1):
-            nome = lead["nome"]
-            print(f"  [{i:2d}/{len(leads)}] {nome[:55]:55s}", end=" ", flush=True)
-            meta = check_meta_ads(page, nome)
-            time.sleep(2.0)  # anti-detect
-            goog = check_google_ads_transparency(page, nome)
-            time.sleep(1.5)
-            results.append({
-                "id": lead["id"],
-                "nome": nome,
-                "anuncia_meta": meta["status"],
-                "meta_ads_count": meta.get("count", 0),
-                "meta_metodo": meta["metodo"],
-                "anuncia_google": goog["status"],
-                "google_metodo": goog.get("metodo", ""),
-            })
-            m = meta["status"][:3].upper()
-            g = goog["status"][:3].upper()
-            extra = f"({meta.get('count', 0)})" if meta["status"] == "sim" else ""
-            print(f"Meta: {m}{extra:<6} Google: {g}")
-
-        browser.close()
+    for lead in leads_raw:
+        if lead["id"] in cache:
+            results.append(cache[lead["id"]])
 
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(results, fh, ensure_ascii=False, indent=2)
 
-    # Stats
-    n_meta_sim = sum(1 for r in results if r["anuncia_meta"] == "sim")
-    n_meta_nao = sum(1 for r in results if r["anuncia_meta"] == "nao")
-    n_meta_nv = sum(1 for r in results if r["anuncia_meta"] == "nao_verificado")
-    n_goog_sim = sum(1 for r in results if r["anuncia_google"] == "sim")
-    n_goog_nao = sum(1 for r in results if r["anuncia_google"] == "nao")
-    n_goog_nv = sum(1 for r in results if r["anuncia_google"] == "nao_verificado")
+    # Stats apenas dos novos processados agora
+    src = novos if novos else results
+    n_meta_sim = sum(1 for r in src if r["anuncia_meta"] == "sim")
+    n_meta_nao = sum(1 for r in src if r["anuncia_meta"] == "nao")
+    n_meta_nv  = sum(1 for r in src if r["anuncia_meta"] == "nao_verificado")
+    n_goog_sim = sum(1 for r in src if r["anuncia_google"] == "sim")
+    n_goog_nao = sum(1 for r in src if r["anuncia_google"] == "nao")
+    n_goog_nv  = sum(1 for r in src if r["anuncia_google"] == "nao_verificado")
     print(f"\n==========")
-    print(f"META: sim={n_meta_sim} | nao={n_meta_nao} | nao_verificado={n_meta_nv}")
+    print(f"META:   sim={n_meta_sim} | nao={n_meta_nao} | nao_verificado={n_meta_nv}")
     print(f"GOOGLE: sim={n_goog_sim} | nao={n_goog_nao} | nao_verificado={n_goog_nv}")
-    print(f"Salvo: {OUT}")
+    print(f"Salvo : {OUT} ({len(results)} leads no cache)")
 
 if __name__ == "__main__":
     main()

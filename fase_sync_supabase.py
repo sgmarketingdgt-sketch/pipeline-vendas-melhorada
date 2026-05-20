@@ -82,8 +82,16 @@ CAMPOS_PROTEGIDOS = {
     "rapport_humano",
     "gancho_dor",
     "first_seen_at",
-    "historico_resumido",   # gravado pelo N8N, Python nunca sobrescreve
-    "score_conversacional", # gravado pelo N8N, Python nunca sobrescreve
+    # Campos do operador (CRM) — preservam trabalho manual entre rodadas
+    "overrides",           # edições manuais, sub-coluna, controle manual
+    "followup_start",      # timestamp de início da régua (ms)
+    "followup_sent",       # etapas enviadas {1: ts, 2: ts, 3: ts, 4: ts}
+    "loss_reason",         # motivo do lead perdido
+    "needs_loss_reason",   # flag: motivo pendente de definição
+    # Campos do N8N — gravados pelo agente, Python nunca sobrescreve
+    "historico_resumido",
+    "is_bot",
+    "score_conversacional",
 }
 
 # Default para score_conversacional quando o lead ainda não tem

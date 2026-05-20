@@ -67,15 +67,33 @@ CREATE TABLE IF NOT EXISTS leads (
   anuncia_google        text,
   meta_ads_count        integer DEFAULT 0,
 
+  -- Sinais Maps extras
+  maps_avaliacoes       text,
+  maps_fotos            text,
+
   -- Inteligência de abordagem
   rapport_humano        jsonb DEFAULT '[]'::jsonb,
   gancho_dor            jsonb DEFAULT '[]'::jsonb,
+  mensagem_wa           text,
+  angulo                text,
+  conteudo_angulo       text,
+  resultado_alvo        text,
   priority_score        numeric DEFAULT 0,
 
-  -- Estado de trabalho do operador
+  -- Score conversacional (gravado pelo N8N — nunca sobrescrito pelo Python)
+  score_conversacional  jsonb DEFAULT '{"dor":0,"momento":0,"maturidade":0,"comportamento":0,"anti_curioso":0,"total":0,"temperatura":"frio","sinais":[],"ultima_atualizacao":null}'::jsonb,
+
+  -- Estado de trabalho do operador (nunca sobrescrito pelo pipeline Python)
   status                text DEFAULT 'novo',
   notes                 jsonb DEFAULT '[]'::jsonb,
   activity              jsonb DEFAULT '[]'::jsonb,
+  overrides             jsonb DEFAULT '{}'::jsonb,
+  is_bot                text,
+  historico_resumido    text,
+  followup_start        bigint,
+  followup_sent         jsonb DEFAULT '{}'::jsonb,
+  loss_reason           text,
+  needs_loss_reason     boolean DEFAULT false,
 
   -- Controle de execução incremental
   novo_nesta_rodada     boolean DEFAULT true,
@@ -100,6 +118,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS leads_whatsapp_agencia_uniq
   ON leads (whatsapp_numero, agencia)
   WHERE whatsapp_numero IS NOT NULL AND whatsapp_numero <> ''
     AND (cnpj IS NULL OR cnpj = '');
+
+-- Índice para upsert via external_id (usado pelo cloudUpsertLead do CRM como fallback).
+CREATE UNIQUE INDEX IF NOT EXISTS leads_external_id_agencia_uniq
+  ON leads (external_id, agencia)
+  WHERE external_id IS NOT NULL AND external_id <> '';
 
 -- ---------------------------------------------------------------------
 -- Índices de leitura (kanban e filtros)

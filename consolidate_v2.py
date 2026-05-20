@@ -52,6 +52,51 @@ def _id_offset(segmento: str) -> int:
     return 0
 
 
+# ── Ângulo de abordagem ──────────────────────────────────────────────────────
+
+# Resultado esperado por serviço — aparece no campo resultado_alvo de cada lead
+RESULTADO_ALVO_POR_SERVICO: dict[str, str] = {
+    "trafego_pago":         "Aumentar pedidos via Meta Ads",
+    "gmb":                  "Dominar busca local no Google Maps",
+    "trafego_pago_aviacao": "Captar matrículas via Google Ads",
+}
+
+
+def _extrair_angulo(gancho_text: str) -> tuple[str, str]:
+    """Extrai a tag [TIPO] do início do gancho.
+
+    Retorna (angulo, conteudo_sem_tag):
+      angulo  — 'DOR' | 'DESEJO' | 'OPORTUNIDADE' | 'DADO DE MERCADO' | 'Abordagem'
+      conteudo — texto do gancho sem o prefixo [TAG], pronto para uso no bot
+    """
+    if not gancho_text:
+        return ("Abordagem", "")
+    m = re.match(r"^\[([^\]]+)\]\s*", gancho_text)
+    if m:
+        return (m.group(1), gancho_text[m.end():].strip())
+    return ("Abordagem", gancho_text.strip())
+
+
+def _selecionar_gancho(gancho_list: list, lead: dict) -> str:
+    """Escolhe o gancho mais adequado ao perfil do lead.
+
+    Empresa que já anuncia → ângulo DESEJO (upsell).
+    Empresa sem anúncio   → ângulo DOR ou DADO DE MERCADO.
+    Fallback              → primeiro da lista.
+    """
+    if not gancho_list:
+        return ""
+    anuncia = (lead.get("anuncia_meta") or "").lower()
+    for item in gancho_list:
+        tag_m = re.match(r"^\[([^\]]+)\]", item or "")
+        tag = (tag_m.group(1).upper() if tag_m else "")
+        if anuncia == "sim" and "DESEJO" in tag:
+            return item
+        if anuncia != "sim" and any(k in tag for k in ("DOR", "DADO", "OPORTUNIDADE")):
+            return item
+    return gancho_list[0]
+
+
 # ---------------------------------------------------------------------
 # Modo LOCAL — comportamento histórico do CMD-3
 # ---------------------------------------------------------------------
@@ -256,6 +301,15 @@ def consolidar_local() -> tuple[list, dict]:
         classificacao_icp = servico_principal_data.get("classificacao") or "media"
         mensagem_wa = servico_principal_data.get("mensagem_wa")
 
+        # ── Ângulo principal de abordagem ────────────────────────────────────
+        _gancho_para_angulo = servico_principal_data.get("gancho") or gancho
+        _gancho_sel = _selecionar_gancho(_gancho_para_angulo, lead_parcial)
+        _angulo, _conteudo_angulo = _extrair_angulo(_gancho_sel)
+        _servico_id = servico_principal.get("id", "") if servico_principal else ""
+        _resultado_alvo = RESULTADO_ALVO_POR_SERVICO.get(
+            _servico_id, "Crescimento via marketing digital"
+        )
+
         final.append({
             "id": lid + _id_off,
             "segmento": segmento_lead,
@@ -310,6 +364,9 @@ def consolidar_local() -> tuple[list, dict]:
             "priority_score": priority_score,
             "classificacao_icp": classificacao_icp,
             "mensagem_wa": mensagem_wa,
+            "angulo": _angulo,
+            "conteudo_angulo": _conteudo_angulo,
+            "resultado_alvo": _resultado_alvo,
             "servicos": servicos_lead,
             "query_origem": base.get("query_origem"),
             "novo_nesta_rodada": True,
@@ -369,6 +426,9 @@ def consolidar_local() -> tuple[list, dict]:
                             nl.setdefault(ig_field, el[ig_field])
                     nl["novo_nesta_rodada"] = False  # já existia
                     nl["data_entrada"] = el.get("data_entrada", datetime.now().strftime("%Y-%m-%d"))
+                    # historico_resumido é gravado pelo N8N — nunca sobrescrever
+                    if el.get("historico_resumido"):
+                        nl["historico_resumido"] = el["historico_resumido"]
                 else:
                     nl["novo_nesta_rodada"] = True   # realmente novo
                     nl["data_entrada"] = datetime.now().strftime("%Y-%m-%d")
