@@ -769,10 +769,11 @@
     // Lead gerenciado pelo N8N — posição calculada pelo histórico
     if (ls.historico_resumido) {
       const d = getN8nLastDay(ls.historico_resumido);
-      if (d === null || d <= 1) return 'd0';
-      if (d <= 3) return 'd2';
-      if (d <= 5) return 'd5';
-      return 'd7';
+      if (d === null) return 'd0';   // nada enviado ainda
+      if (d <= 1)     return 'd2';   // abordagem inicial enviada, aguardando D+2
+      if (d <= 3)     return 'd5';   // D+2 enviado, aguardando D+5
+      if (d <= 6)     return 'd7';   // D+5 enviado, aguardando D+7
+      return 'd7';                   // D+7 concluído
     }
     // Lead manual — posição salva pelo arraste
     if (ov.abordado_subcol) return ov.abordado_subcol;
