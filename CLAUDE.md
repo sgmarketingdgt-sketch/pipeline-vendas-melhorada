@@ -218,6 +218,24 @@ A detecção do Google Ads Transparency Center usa `networkidle` + texto ("123 a
 - `CONCLUDED_STATUSES = ['ganhou', 'perdeu', 'agendado', 'sem_resposta', 'qualificado']` — leads nesses status não aparecem no filtro nem na régua
 - `followup_start`, `followup_sent`, `loss_reason`, `needs_loss_reason` são salvos no Supabase e restaurados no `bootCloud`
 
+### Lógica de posicionamento na sub-coluna (`getAbordadoSubcol`)
+
+Prioridade de decisão (ordem):
+1. `manual_control && abordado_subcol` → usa posição salva pelo operador (prioridade absoluta)
+2. `historico_resumido && !manual_control` → posição calculada pelo N8N:
+   - `lastDay = null` → D0 (nada enviado)
+   - `lastDay <= 1` → D+2 (abordagem feita, aguarda D+2)
+   - `lastDay <= 3` → D+5 (D+2 feito, aguarda D+5)
+   - `lastDay <= 6` → D+7 (D+5 feito, aguarda D+7)
+3. `overrides.abordado_subcol` → posição salva por drag manual
+4. Fallback por `followup_sent`: `sent[3]→d7`, `sent[2]→d5`, `sent[1]→d2`, else `d0`
+
+### Avanço automático de sub-coluna
+
+- **Lead N8N**: avança quando N8N grava novo marcador `[DX - ...]` em `historico_resumido` no Supabase + página recarregada
+- **Lead manual**: avança ao clicar **"✓ Enviado"** (`markFuSent`) ou arrastar o card
+- `markFuSent` em lead N8N ativa `manual_control` automaticamente (evita conflito de posição)
+
 ---
 
 ## 12. Integração N8N × CRM — coexistência manual/automático
@@ -254,8 +272,15 @@ O N8N escreve diretamente no Supabase (campos `status`, `historico_resumido`, `i
 - Badge **🤖 Automático** → lead sendo gerido pelo N8N
 - Badge **✋ Controle manual** → operador assumiu o lead
 - Arrastar lead do N8N entre sub-colunas ativa `manual_control` automaticamente
+- Clicar **"✓ Enviado"** em lead N8N também ativa `manual_control` automaticamente
 - Botões "Devolver ao N8N" / "Tomar controle" na aba Follow-up do dossier
 - Filtro **"👤 Minhas abordagens"** mostra apenas leads manuais (sem N8N ou com `manual_control`)
+- Lead N8N com `manual_control` ativo: aba Follow-up mostra **régua manual completa** + histórico do bot abaixo
+- Lead N8N sem `manual_control`: aba Follow-up mostra apenas timeline do agente
+
+### Regra de ouro — evitar conflito manual × N8N
+
+**Nunca envie mensagem manualmente para um lead que o N8N está gerenciando sem antes clicar "✋ Tomar controle".** Sem isso, o N8N pode sobrescrever a posição da sub-coluna na próxima atualização do Supabase.
 
 ### Merge no bootCloud (local vence sobre cloud)
 ```javascript
