@@ -153,6 +153,30 @@ npx vercel alias set [url-gerada].vercel.app [URL_VERCEL].vercel.app
 
 Na primeira execução o Vercel cria o projeto. Nas seguintes, é só redeploy. O alias garante que a URL não muda entre deploys.
 
+### Relatório final obrigatório
+
+Ao concluir todas as fases, exiba obrigatoriamente este relatório no terminal:
+
+```
+Pipeline concluído — [AGENCIA] · [SEGMENTO] · [CIDADE]
+
+  [Fase 01] Extração via Google Places   → X leads brutos coletados
+  [Fase 02] Dedup e filtro regional      → X leads após filtro
+  [Fase 03] Extração de CNPJ             → X% com CNPJ encontrado
+  [Fase 04] Enriquecimento via BrasilAPI → X% com sócios identificados
+  [Fase 05] Validação de WhatsApp        → X% com WA ativo  (ou: pulada)
+  [Fase 06] Anúncios Meta e Google       → X anunciando no Meta
+  [Fase 07] Busca de e-mails             → X% com e-mail encontrado
+  [Fase 08] Instagram e decisores        → X% com Instagram localizado
+  [Fase 09] Consolidação                 → X leads em leads_final.json
+  [Fase 09a] Sync Supabase               → X leads sincronizados (ou: pulada)
+  [Fase 10] Build e deploy               → CRM no ar
+
+CRM no ar em: https://[URL_VERCEL].vercel.app
+```
+
+Substitua cada `X` pelo número real obtido na fase. Se uma fase opcional foi pulada, escreva "pulada".
+
 ---
 
 ## O que o CRM entrega
