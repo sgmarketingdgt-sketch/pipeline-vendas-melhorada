@@ -144,9 +144,10 @@ def rank_key(row):
 filtrados.sort(key=rank_key)
 selecionados = filtrados[:50]
 
-fieldnames = list(selecionados[0].keys())
+# União de todas as colunas presentes (CSVs de rodadas diferentes podem ter colunas distintas)
+all_keys = list(dict.fromkeys(k for row in selecionados for k in row.keys()))
 with open(OUT_CSV, "w", encoding="utf-8-sig", newline="") as fh:
-    writer = csv.DictWriter(fh, fieldnames=fieldnames)
+    writer = csv.DictWriter(fh, fieldnames=all_keys, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(selecionados)
 
