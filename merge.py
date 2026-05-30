@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Merge + dedup dos CSVs do extrator para prospecção de hamburguerias em SP."""
+"""Merge + dedup dos CSVs do extrator para prospecção local (qualquer nicho SP).
+Filtra automaticamente os CSVs pelo SEGMENTO definido no .env."""
 import csv, glob, os, re, sys, io
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -10,8 +14,28 @@ BASE = Path(__file__).parent
 SRC = BASE / "prospects"
 OUT_CSV = BASE / "leads_merged.csv"
 
-files = sorted(f for f in SRC.glob("*.csv") if "_agente" not in f.name)
-print(f"Lendo {len(files)} CSVs:")
+SEGMENTO_ENV = os.getenv("SEGMENTO", "").strip().strip('"').strip("'").lower()
+
+all_files = sorted(f for f in SRC.glob("*.csv") if "_agente" not in f.name)
+
+# Filtra apenas CSVs do segmento atual (detecta pelo campo segmento na 1ª linha)
+files = []
+for f in all_files:
+    try:
+        with open(f, "r", encoding="utf-8-sig") as fh:
+            row = next(csv.DictReader(fh), None)
+            seg = (row.get("segmento") or "").strip().strip('"').strip("'").lower()
+            if not SEGMENTO_ENV or SEGMENTO_ENV in seg or seg in SEGMENTO_ENV:
+                files.append(f)
+    except Exception:
+        pass
+
+if not files:
+    print(f"[aviso] Nenhum CSV com segmento='{SEGMENTO_ENV}' encontrado em prospects/")
+    print("        Rode o extrator primeiro ou verifique o SEGMENTO no .env.")
+    sys.exit(0)
+
+print(f"Segmento: {SEGMENTO_ENV or '(todos)'} — {len(files)} CSVs encontrados:")
 for f in files:
     print(f"  {f.name}")
 
@@ -89,9 +113,9 @@ def is_valid(row):
     ddd_match = re.search(r"\((\d{2})\)", telefone)
     if ddd_match and ddd_match.group(1) not in SP_DDDS:
         return False
-    # aceita se o nome bate com nicho OU se a categoria Maps é de alimentação
+    # aceita se o nome ou categoria bate com algum termo do nicho
     niche_ok = any(t in nome for t in NICHE_TERMS)
-    cat_ok = any(t in cat for t in ["burger", "hamburguer", "sandwich", "fast food", "meal takeaway", "restaurant"])
+    cat_ok   = any(t in cat  for t in NICHE_TERMS)
     return niche_ok or cat_ok
 
 
