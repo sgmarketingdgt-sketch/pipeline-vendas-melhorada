@@ -23,7 +23,6 @@ FIELD_MASK = (
     "places.displayName,places.nationalPhoneNumber,places.internationalPhoneNumber,"
     "places.websiteUri,places.formattedAddress,places.types,places.rating,"
     "places.userRatingCount,places.googleMapsUri,places.photos,places.reviews,"
-    "places.socialMediaLinks,"   # Instagram, Facebook etc. do perfil do Maps
     "nextPageToken"
 )
 
@@ -120,10 +119,9 @@ def place_to_row(p):
     intl = p.get("internationalPhoneNumber", "")
     reviews = p.get("reviews", [])
     segmento = os.getenv("SEGMENTO", "Geral").strip().strip('"').strip("'")
-    # Extrai Instagram (e Facebook) do campo socialMediaLinks do Maps
-    social = p.get("socialMediaLinks") or []
-    instagram_maps = next((s.get("uri", "") for s in social if "instagram.com" in s.get("uri", "")), "")
-    facebook_maps  = next((s.get("uri", "") for s in social if "facebook.com"  in s.get("uri", "")), "")
+    # socialMediaLinks não disponível neste plano da API — campos deixados vazios
+    instagram_maps = ""
+    facebook_maps  = ""
     return {
         "nome": p.get("displayName", {}).get("text", ""),
         "telefone": p.get("nationalPhoneNumber", ""),
