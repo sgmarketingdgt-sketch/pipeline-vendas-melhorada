@@ -402,11 +402,18 @@ def consolidar_local() -> tuple[list, dict]:
 
             # Monta índice por chave dos leads NOVOS (recém-consolidados)
             new_keys: set[str] = set()
+            preserved_ids: set[int] = set()  # IDs já ocupados por leads existentes
+
             for nl in final:
                 k = _chave_lead(nl)
                 new_keys.add(k)
                 if k in existing_by_key:
                     el = existing_by_key[k]
+                    # ── PRESERVA O ID ORIGINAL ──────────────────────────────────
+                    # Crítico: sem isso, a mudança de posição entre extrações faz o
+                    # CRM perder o estado (localStorage/Supabase é indexado pelo ID).
+                    nl["id"] = el["id"]
+                    preserved_ids.add(el["id"])
                     # Preserva dados de pipeline (não sobrescreve com None)
                     nl["status"]         = el.get("status", "novo")
                     nl["notes"]          = el.get("notes") or []
@@ -432,6 +439,17 @@ def consolidar_local() -> tuple[list, dict]:
                 else:
                     nl["novo_nesta_rodada"] = True   # realmente novo
                     nl["data_entrada"] = datetime.now().strftime("%Y-%m-%d")
+
+            # Reatribui IDs dos leads realmente novos para evitar conflito com IDs preservados
+            available_ids = [
+                i + _id_off for i in range(1, 100)
+                if (i + _id_off) not in preserved_ids
+            ]
+            new_id_cursor = 0
+            for nl in final:
+                if nl.get("novo_nesta_rodada") and new_id_cursor < len(available_ids):
+                    nl["id"] = available_ids[new_id_cursor]
+                    new_id_cursor += 1
 
             # Leads que existiam mas NÃO apareceram na nova extração → mantém com flag
             leads_sumidos = [
