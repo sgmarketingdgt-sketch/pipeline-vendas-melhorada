@@ -257,7 +257,7 @@ def consolidar_local() -> tuple[list, dict]:
             "whatsapp_ativo": wa.get("wa_ativo", False),
             "dono": None,  # preenchido abaixo
             "site": base.get("site"),
-            "maps_nota": base.get("nota"),
+            "maps_nota": base.get("nota") or base.get("score"),  # "score" = campo do extrator/merge
             "maps_avaliacoes": base.get("avaliacoes"),
             "maps_recencia_dias": base.get("recencia_dias"),
             "segmento": segmento_lead,
@@ -338,7 +338,7 @@ def consolidar_local() -> tuple[list, dict]:
             "dono": dono_limpo,
             "dono_raw": dono_raw if dono_raw else None,
             "dono_fonte": v2.get("dono_fonte"),
-            "maps_nota": base.get("nota"),
+            "maps_nota": base.get("nota") or base.get("score"),  # "score" = campo do extrator/merge
             "maps_avaliacoes": base.get("avaliacoes"),
             "maps_fotos": base.get("fotos"),
             "maps_recencia_dias": base.get("recencia_dias"),

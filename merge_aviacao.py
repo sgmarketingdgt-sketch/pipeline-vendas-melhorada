@@ -93,6 +93,14 @@ BLACKLIST_TERMS = [
     "táxi", "taxi", "transporte", "seguro", "segurança",
     "medicina", "clínica", "clinica",
     "supermercado", "mercado", "padaria",
+    # Falsos positivos comuns em buscas de aviação:
+    "auto escola", "autoescola", "auto-escola",     # autoescola de trânsito
+    "engenharia química", "engenharia quimica",     # cursos de engenharia
+    "simulador", "simuladores",                     # fabricantes de simuladores (não escolas)
+    "concurso", "preparatório", "preparatorio",     # cursinhos para concurso de aviação
+    "loja", "equipamento", "fardamento",            # fornecedores de equipamentos
+    "seguro aeronáutico", "seguro aeronautico",     # seguradoras
+    "despachante", "despacho aduaneiro",            # despachantes aduaneiros
 ]
 
 
