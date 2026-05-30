@@ -39,42 +39,51 @@ OUT  = BASE / "leads_final.json"
 # ── Offset de ID por segmento (evita colisão ao misturar nichos) ─────────────
 # Cada nicho ocupa uma faixa de 100 IDs. Adicione novos nichos aqui.
 SEGMENTO_ID_OFFSET: dict[str, int] = {
-    "hamburgueria":              0,   # IDs   1 –  99
-    "escola de aviação":       100,   # IDs 101 – 199
-    "escola de aviacao":       100,
-    "segurança do trabalho":   200,   # IDs 201 – 299
-    "seguranca do trabalho":   200,
-    "treinamento nr":          200,
-    "clínica odontológica":    300,   # IDs 301 – 399
-    "clinica odontologica":    300,
-    "odontologia":             300,
-    "academia":                400,   # IDs 401 – 499
-    "academia de musculação":  400,
-    "academia de musculacao":  400,
-    "advocacia":               500,   # IDs 501 – 599
-    "escritório de advocacia": 500,
-    "escritorio de advocacia": 500,
-    "contabilidade":           600,   # IDs 601 – 699
-    "escritório contábil":     600,
-    "escritorio contabil":     600,
-    "autoescola":              700,   # IDs 701 – 799
-    "auto escola":             700,
-    "clínica veterinária":     800,   # IDs 801 – 899
-    "clinica veterinaria":     800,
-    "veterinária":             800,
-    "veterinaria":             800,
-    "estética":                900,   # IDs 901 – 999
-    "estetica":                900,
-    "clínica de estética":     900,
-    "clinica de estetica":     900,
+    "hamburgueria":           0,   # IDs   1 –  99
+    "escola de aviação":    100,   # IDs 101 – 199
+    "escola de aviacao":    100,
+    "segurança do trabalho": 200,  # IDs 201 – 299
+    "seguranca do trabalho": 200,
+    "treinamento nr":        200,
 }
+
+# Arquivo que persiste offsets de nichos novos entre execuções
+_NICHOS_FILE = BASE / "nichos_registrados.json"
+
+
+def _carregar_nichos_registrados() -> dict[str, int]:
+    if _NICHOS_FILE.exists():
+        try:
+            with _NICHOS_FILE.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _salvar_nichos_registrados(d: dict[str, int]) -> None:
+    with _NICHOS_FILE.open("w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=2)
+
 
 def _id_offset(segmento: str) -> int:
     s = (segmento or "").lower()
+    # 1. Tabela fixa
     for key, off in SEGMENTO_ID_OFFSET.items():
         if key in s:
             return off
-    return 0
+    # 2. Nichos dinâmicos já registrados
+    dinamicos = _carregar_nichos_registrados()
+    for key, off in dinamicos.items():
+        if key == s:
+            return off
+    # 3. Nicho novo — calcula próximo offset disponível e persiste
+    todos_offsets = set(SEGMENTO_ID_OFFSET.values()) | set(dinamicos.values())
+    proximo = max(todos_offsets) + 100 if todos_offsets else 300
+    dinamicos[s] = proximo
+    _salvar_nichos_registrados(dinamicos)
+    print(f"  [nicho novo] '{segmento}' registrado com offset {proximo} (IDs {proximo+1}–{proximo+99})")
+    return proximo
 
 
 # ── Ângulo de abordagem ──────────────────────────────────────────────────────

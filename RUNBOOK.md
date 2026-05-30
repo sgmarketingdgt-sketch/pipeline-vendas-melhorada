@@ -1,62 +1,25 @@
 # RUNBOOK — Operação de Prospecção Yonzza Digital
 
-Guia completo e autossuficiente. Siga na ordem. Sem precisar do Claude.
+Guia completo e autossuficiente. Sem precisar do Claude.
 
 ---
 
-## Nichos já configurados (prontos para usar)
+## Fluxo para qualquer nicho novo
 
-| Nicho | SEGMENTO no .env | SERVICO no .env | IDs | Merge |
-|---|---|---|---|---|
-| Hamburguerias | `Hamburgueria` | `trafego_pago` | 1–99 | `merge.py` |
-| Escolas de Aviação | `Escola de Aviação` | `trafego_pago_aviacao` | 101–199 | `merge_aviacao.py` |
-| Segurança do Trabalho | `Segurança do Trabalho` | `seguranca_trabalho` | 201–299 | `merge.py` |
-| Clínicas Odontológicas | `Clínica Odontológica` | *(criar JSON)* | 301–399 | `merge.py` |
-| Academias | `Academia` | *(criar JSON)* | 401–499 | `merge.py` |
-| Advocacia | `Advocacia` | *(criar JSON)* | 501–599 | `merge.py` |
-| Contabilidade | `Contabilidade` | *(criar JSON)* | 601–699 | `merge.py` |
-| Autoescolas | `Autoescola` | *(criar JSON)* | 701–799 | `merge.py` |
-| Clínicas Veterinárias | `Clínica Veterinária` | *(criar JSON)* | 801–899 | `merge.py` |
-| Estética | `Estética` | *(criar JSON)* | 901–999 | `merge.py` |
-
----
-
-## Passo a passo para cada nova leva
-
-### Passo 1 — Configurar o .env
-
-Abra o arquivo `.env` e ajuste as 3 linhas:
+### Passo 1 — Editar o `.env` (3 linhas)
 
 ```
-SEGMENTO="Nome do Nicho"    ← exatamente como na tabela acima
-CIDADE="São Paulo"           ← cidade alvo
-SERVICO=id_do_servico        ← id do JSON em servicos/
-```
-
-**Exemplo para odontologia:**
-```
-SEGMENTO="Clínica Odontológica"
+SEGMENTO="Nome do Nicho"
 CIDADE="São Paulo"
-SERVICO=odontologia
+SERVICO=generico
 ```
+
+Só isso. O pipeline detecta o nicho automaticamente e usa mensagens genéricas de Google Ads.
+Se quiser mensagens personalizadas para o nicho, troque `SERVICO=generico` pelo ID do serviço específico (ex: `seguranca_trabalho`).
 
 ---
 
-### Passo 2 — Criar o JSON do serviço (se for nicho novo)
-
-Copie um existente como base e edite:
-
-```bash
-cp servicos/seguranca_trabalho.json servicos/odontologia.json
-```
-
-Edite os campos: `id`, `nome`, `nicho_alvo`, `ticket_inicial`, `mensagem_wa_template`, `rapport_humano`, `gancho_dor`.
-
-**Regra:** `nicho_alvo` deve ser o SEGMENTO em letras minúsculas.
-
----
-
-### Passo 3 — Rodar as queries de extração
+### Passo 2 — Rodar as queries de extração
 
 ```bash
 cd ~/Downloads/invictus-prospect-template
@@ -67,27 +30,27 @@ python3 extrator.py "[SEGMENTO] [CIDADE VIZINHA]"
 # ... 8 a 12 queries no total
 ```
 
-**Dica:** use sinônimos e variações de nome + cidades vizinhas para ampliar a base.
+**Meta:** 80–120 resultados brutos em `prospects/`.
 
 ---
 
-### Passo 4 — Dedup e filtro
+### Passo 3 — Dedup e filtro
 
-Use `merge.py` para nichos locais (SP):
+Nicho local (uma cidade):
 ```bash
 python3 merge.py
 ```
 
-Use `merge_aviacao.py` para nichos nacionais (ex: aviação):
+Nicho nacional (ex: aviação):
 ```bash
 python3 merge_aviacao.py
 ```
 
-**Meta:** 45–50 leads após o filtro. Se sair menos, rode mais queries no Passo 3.
+**Meta:** 45–50 leads após filtro. Se sair menos, rode mais queries.
 
 ---
 
-### Passo 5 — Enriquecimento (rodar em sequência)
+### Passo 4 — Enriquecimento
 
 ```bash
 python3 fase_a_cnpj.py
@@ -98,11 +61,9 @@ python3 fase_email.py
 python3 fase_instagram.py
 ```
 
-Cada fase usa cache — se já rodou antes, pula automaticamente os leads já processados.
-
 ---
 
-### Passo 6 — Consolidar e publicar
+### Passo 5 — Consolidar e publicar
 
 ```bash
 python3 consolidate_v2.py
@@ -114,13 +75,14 @@ npx vercel alias set [url-gerada].vercel.app invictus-prospect-yonzza.vercel.app
 
 ---
 
-## Regras importantes
+## Nichos ativos (já com mensagens personalizadas)
 
-1. **Nunca reutilize faixas de ID** — cada nicho tem 100 IDs reservados na tabela acima
-2. **SEGMENTO no .env deve bater exatamente** com o que está na tabela (case insensitive)
-3. **Nunca edite `index.html` diretamente** — sempre `template_crm.html` → `build_html_v2.py`
-4. **Nunca apague os arquivos de cache** (`wa_validado.json`, `email_validado.json` etc.)
-5. **Sempre fixe o alias** após o deploy
+| Nicho | SEGMENTO | SERVICO |
+|---|---|---|
+| Hamburguerias SP | `Hamburgueria` | `trafego_pago` |
+| Escolas de Aviação | `Escola de Aviação` | `trafego_pago_aviacao` |
+| Segurança do Trabalho | `Segurança do Trabalho` | `seguranca_trabalho` |
+| Qualquer outro nicho | *(qualquer nome)* | `generico` |
 
 ---
 
@@ -135,63 +97,38 @@ treinamento NR33 espaço confinado São Paulo
 brigada de incêndio treinamento São Paulo
 curso nr10 Campinas / Guarulhos / ABC paulista
 treinamento NR18 construção civil São Paulo
+curso trabalho em altura nr35 São Paulo
+treinamento segurança trabalho ABC paulista
 ```
 
-### Clínicas Odontológicas — SP
+### Escolas de Aviação — Brasil
 ```
-clínica odontológica São Paulo
-dentista São Paulo
-ortodontia São Paulo
-implante dentário São Paulo
-clínica odontológica Guarulhos / ABC / Campinas
-```
-
-### Academias — SP
-```
-academia musculação São Paulo
-academia fitness São Paulo
-academia crossfit São Paulo
-academia de ginástica São Paulo
-academia Guarulhos / ABC / Campinas
+escola de aviação Brasil
+formação de pilotos Brasil
+escola piloto privado Brasil
+escola de pilotagem avião ATPL Brasil
+curso piloto comercial Brasil
+instrução de voo aeroclube Brasil
+flight school Brasil
 ```
 
-### Advocacia — SP
+### Para qualquer nicho novo
 ```
-escritório de advocacia São Paulo
-advogado trabalhista São Paulo
-advogado empresarial São Paulo
-advocacia previdenciária São Paulo
-```
-
-### Contabilidade — SP
-```
-escritório contábil São Paulo
-contabilidade empresarial São Paulo
-contador São Paulo
-BPO financeiro São Paulo
-```
-
-### Autoescolas — SP
-```
-autoescola São Paulo
-centro de formação condutores São Paulo
-CFC São Paulo
-autoescola Guarulhos / ABC
+[segmento] [cidade]
+[segmento] [cidade vizinha 1]
+[segmento] [cidade vizinha 2]
+[sinônimo do segmento] [cidade]
+[segmento] bairro [nome do bairro]
 ```
 
 ---
 
-## Rotação de nichos para chegar a 300 leads
+## Regras importantes
 
-| Rodada | Nicho | Meta | Status |
-|---|---|---|---|
-| 1 | Hamburguerias SP | 50 leads | ✅ |
-| 2 | Escolas de Aviação Brasil | 50 leads | ✅ |
-| 3 | Segurança do Trabalho SP | 45 leads | 🔄 em andamento |
-| 4 | Clínicas Odontológicas SP | 50 leads | ⏳ |
-| 5 | Academias SP | 50 leads | ⏳ |
-| 6 | Advocacia SP | 50 leads | ⏳ |
-| **Total** | | **295 leads** | |
+1. **`SEGMENTO` no `.env` deve ser consistente** entre rodadas do mesmo nicho (mesmas letras, mesmo texto)
+2. **Nunca edite `index.html` diretamente** — sempre `template_crm.html` → `build_html_v2.py`
+3. **Nunca apague os arquivos de cache** (`wa_validado.json`, `email_validado.json` etc.)
+4. **Sempre fixe o alias** após o deploy
 
 ---
 
@@ -199,11 +136,10 @@ autoescola Guarulhos / ABC
 
 | Erro | Causa | Solução |
 |---|---|---|
-| `HTTP 400 INVALID_ARGUMENT` | Campo inválido na API | Verifique FIELD_MASK no extrator.py |
-| `Nenhum CSV com segmento X` | .env com SEGMENTO errado | Corrija o SEGMENTO no .env |
-| `dict contains fields not in fieldnames` | CSVs de nichos diferentes misturados | merge.py filtra por SEGMENTO automaticamente |
-| Lead aparece como "Novo" após nova extração | ID mudou entre rodadas | Corrigido — consolidate_v2.py preserva IDs |
-| Score Maps nulo | Campo `nota` vs `score` | Corrigido — consolidate_v2.py usa fallback |
+| `HTTP 400 INVALID_ARGUMENT` | Campo inválido na API Google | Normal — query sem resultado, continue |
+| `Nenhum CSV com segmento X` | `.env` com SEGMENTO diferente do CSV | Corrija o SEGMENTO no `.env` |
+| Lead aparece como "Novo" após nova extração | (corrigido) | Atualizar para versão atual |
+| Score Maps nulo | (corrigido) | Atualizar para versão atual |
 
 ---
 

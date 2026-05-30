@@ -1,0 +1,17 @@
+{
+  "id": "generico",
+  "nome": "Google Ads — Genérico",
+  "nicho_alvo": "",
+  "ticket_inicial": 1500,
+  "mensagem_wa_template": "Oi, {dono_primeiro_nome}! Eu sou a Sara, da Yonzza. Encontrei o {nome} pelo Google Maps aqui em {cidade}.\n\nQuando alguém pesquisa pelo seu serviço no Google, o {nome} está aparecendo nos primeiros resultados?",
+  "rapport_humano": [
+    "O {nome} tem {maps_avaliacoes} avaliações no Google — quem construiu esse histórico em {cidade} claramente entrega resultado. Esse tipo de reputação é exatamente o que converte quando o lead chega pelo digital.",
+    "Negócios consolidados em {cidade} como o {nome} normalmente têm a base de clientes construída no boca a boca e em indicações — o que funciona, mas tem teto natural.",
+    "Com presença no Google Maps e histórico de avaliações, o {nome} já tem o ativo mais importante para converter leads digitais — só falta aparecer para quem ainda não conhece."
+  ],
+  "gancho_dor": [
+    "[DADO DE MERCADO] Oi, {dono_primeiro_nome}! Quando alguém em {cidade} pesquisa pelo serviço que o {nome} oferece, quem aparece primeiro no Google fica com o cliente — independente de quem é melhor. Hoje o {nome} está nessa posição?",
+    "[DOR] Oi, {dono_primeiro_nome}! Fiz uma busca rápida pelo serviço do {nome} em {cidade}. Concorrentes que investem em Google Ads aparecem antes e fecham com clientes que nunca ouviram falar do {nome} — não por qualidade, mas por visibilidade.",
+    "[DESEJO] Oi, {dono_primeiro_nome}! Um negócio como o {nome} que aparece no topo do Google para buscas em {cidade} recebe demanda de clientes novos todo dia — sem depender só de indicação. É o canal que a maioria ainda não está usando direito."
+  ]
+}

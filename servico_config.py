@@ -42,6 +42,9 @@ def get_servico(servico_id: str | None = None) -> dict:
         return {}
     path = SERVICOS_DIR / f"{servico_id}.json"
     if not path.exists():
+        # Fallback para o serviço genérico (funciona para qualquer nicho)
+        path = SERVICOS_DIR / "generico.json"
+    if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
