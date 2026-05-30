@@ -39,9 +39,12 @@ OUT  = BASE / "leads_final.json"
 # ── Offset de ID por segmento (evita colisão ao misturar nichos) ─────────────
 # Cada nicho ocupa uma faixa de 100 IDs. Adicione novos nichos aqui.
 SEGMENTO_ID_OFFSET: dict[str, int] = {
-    "hamburgueria":      0,    # IDs  1 – 99
-    "escola de aviação": 100,  # IDs 101 – 199
-    "escola de aviacao": 100,
+    "hamburgueria":           0,    # IDs   1 –  99
+    "escola de aviação":    100,    # IDs 101 – 199
+    "escola de aviacao":    100,
+    "segurança do trabalho": 200,   # IDs 201 – 299
+    "seguranca do trabalho": 200,
+    "treinamento nr":        200,
 }
 
 def _id_offset(segmento: str) -> int:

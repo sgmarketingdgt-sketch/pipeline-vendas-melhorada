@@ -53,12 +53,24 @@ BLACKLIST_TERMS = [
     "tabelionato", "cartório", "cartorio",
     "supermercado", "mercado", "padaria",
     "pizzaria", "sushi", "japonesa", "italiana",
+    # Falsos positivos para segurança do trabalho:
+    "venda de epi", "equipamentos epi", "locação",
+    "medicina do trabalho", "clínica", "clinica",
+    "engenharia", "consultoria ambiental",
+    "dedetização", "dedetizacao",
 ]
 
 NICHE_TERMS = [
-    "burger", "burguer", "hamburguer", "hamburgueria", "hamburgeria",
-    "smash", "artesanal", "lanche", "lanches", "lanchonete",
-    "gourmet", "dog", "sanduba", "sanduíche", "sanduiche",
+    # Segurança do trabalho — NRs e termos gerais
+    "nr10", "nr35", "nr33", "nr12", "nr6", "nr20", "nr23", "nr18",
+    "segurança do trabalho", "seguranca do trabalho",
+    "treinamento nr", "curso nr", "capacitação nr", "capacitacao nr",
+    "trabalho em altura", "espaço confinado", "espaco confinado",
+    "elétrica segurança", "eletrica seguranca",
+    "brigada de incêndio", "brigada de incendio",
+    "cipa", "cipaatr", "nr-10", "nr-35", "nr-33",
+    "higiene ocupacional", "ssma", "sesmt",
+    "segurança ocupacional", "seguranca ocupacional",
 ]
 
 SP_DDDS = {"11", "12", "13", "14", "15", "17", "18", "19"}

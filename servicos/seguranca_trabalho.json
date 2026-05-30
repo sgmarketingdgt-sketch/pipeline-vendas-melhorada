@@ -1,0 +1,17 @@
+{
+  "id": "seguranca_trabalho",
+  "nome": "Google Ads — Segurança do Trabalho",
+  "nicho_alvo": "segurança do trabalho",
+  "ticket_inicial": 1500,
+  "mensagem_wa_template": "Oi, {dono_primeiro_nome}! Eu sou a Sara, da Yonzza. Encontrei o {nome} pelo Google Maps enquanto mapeava centros de treinamento NR em São Paulo.\n\nA real é que quando uma empresa precisa urgente de um curso NR10, NR35 ou NR33 antes de uma auditoria, ela vai direto no Google.\n\nHoje o {nome} está aparecendo quando pesquisam 'curso nr10 são paulo'?",
+  "rapport_humano": [
+    "O {nome} está há um bom tempo no mercado de treinamentos NR em {cidade} — e quem mantém esse nível de consistência normalmente construiu a base de clientes no boca a boca e em contratos corporativos diretos.",
+    "Com {maps_avaliacoes} avaliações no Google, o {nome} claramente entrega resultado — esse tipo de reputação é raro nesse setor e é exatamente o que converte quando o lead chega pelo digital.",
+    "Centros de treinamento em {cidade} que sobrevivem mais de 5 anos normalmente têm um diferencial técnico real — instrutores certificados, estrutura própria ou currículo aprovado pelo MTE. O {nome} claramente tem isso."
+  ],
+  "gancho_dor": [
+    "[DADO DE MERCADO] Oi, {dono_primeiro_nome}! Quando uma empresa recebe notificação de auditoria ou precisa renovar certificações, o primeiro movimento do RH ou do técnico de segurança é pesquisar no Google. Centros que aparecem nos primeiros resultados fecham esses contratos sem nem ter sido indicados. O {nome} está nessa posição hoje?",
+    "[DOR] Oi, {dono_primeiro_nome}! Fiz uma pesquisa rápida por 'curso nr10 {cidade}' e 'treinamento nr35 {cidade}'. Empresas que nunca ouviram falar do {nome} estão fechando com quem aparece primeiro — não necessariamente com quem é melhor. Dá pra mudar isso com Google Ads.",
+    "[DESEJO] Oi, {dono_primeiro_nome}! Um centro de treinamento NR que aparece no topo do Google para 'curso nr10 {cidade}' ou 'nr35 trabalho em altura {cidade}' recebe demanda de empresas que nunca indicariam por contato direto — indústrias, construtoras, facilities. É o canal que o {nome} ainda não está usando."
+  ]
+}
