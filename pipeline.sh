@@ -69,8 +69,13 @@ python3 build_html_v2.py
 
 echo ""
 echo -e "${VERDE}[Fase 10] Publicando na Vercel...${RESET}"
-URL=$(npx vercel --prod --yes --force 2>&1 | grep "https://" | tail -1)
-npx vercel alias set "${URL##*/}" invictus-prospect-yonzza.vercel.app 2>/dev/null || true
+DEPLOY_OUT=$(npx vercel --prod --yes --force 2>&1)
+echo "$DEPLOY_OUT"
+# Extrai URL do deployment (*.vercel.app que não seja o alias)
+DEPLOY_URL=$(echo "$DEPLOY_OUT" | grep -o 'https://invictus-prospect-yonzza-[a-z0-9]*\.vercel\.app' | head -1)
+if [ -n "$DEPLOY_URL" ]; then
+  npx vercel alias set "${DEPLOY_URL#https://}" invictus-prospect-yonzza.vercel.app 2>/dev/null || true
+fi
 
 echo ""
 echo "=================================================="
