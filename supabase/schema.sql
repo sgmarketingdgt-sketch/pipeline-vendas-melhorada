@@ -190,7 +190,10 @@ CREATE TRIGGER leads_set_updated_at
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE execucoes ENABLE ROW LEVEL SECURITY;
 
--- Policy aberta (default recomendado para projeto pessoal):
+-- Policy de acesso: a anon_key é embutida no HTML do CRM (necessário para funcionar
+-- sem backend). A "segurança" vem da obscuridade da URL do CRM (Vercel) e do fato
+-- de ser um projeto pessoal/privado. Se o projeto for compartilhado, substitua
+-- por autenticação via Supabase Auth + policy por agencia (exemplo comentado abaixo).
 DROP POLICY IF EXISTS leads_anon_all ON leads;
 CREATE POLICY leads_anon_all ON leads
   FOR ALL

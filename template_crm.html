@@ -486,13 +486,21 @@
     if (!CLOUD_MODE || !supabaseClient) return null;
     setSyncStatus('Carregando...', '#F59E0B');
     try {
-      const { data, error } = await supabaseClient
-        .from('leads')
-        .select('*')
-        .eq('agencia', CRM_CONFIG.agencia);
-      if (error) throw error;
+      // Paginação: Supabase retorna max 1000 por request — busca em páginas de 1000
+      let allData = [], from = 0, pageSize = 1000, done = false;
+      while (!done) {
+        const { data, error } = await supabaseClient
+          .from('leads')
+          .select('*')
+          .eq('agencia', CRM_CONFIG.agencia)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allData = allData.concat(data || []);
+        done = !data || data.length < pageSize;
+        from += pageSize;
+      }
       setSyncStatus('Sincronizado', '#10B981');
-      return data || [];
+      return allData;
     } catch (e) {
       console.error('[cloud] fetch leads falhou', e);
       setSyncStatus('Offline', '#EF4444');
@@ -3309,7 +3317,15 @@
     const cloud = await cloudFetchLeads();
     if (!cloud) return;
     if (cloud.length === 0) {
-      setSyncStatus('Vazio', '#F59E0B');
+      setSyncStatus('Vazio — enviando estado local', '#F59E0B');
+      // Sobe trabalho local para o Supabase mesmo com cloud vazio (evita perda entre dispositivos)
+      LEADS.leads.forEach(l => {
+        const ls = state.leads[l.id];
+        if (ls && (ls.status !== 'novo' || (ls.notes||[]).length > 0 || (ls.activity||[]).length > 0)) {
+          cloudUpsertLead(l.id);
+        }
+      });
+      setSyncStatus('Sincronizado', '#10B981');
       return;
     }
     // Primeiro passo: popula o mapa de IDs para que cloudUpsertLead funcione

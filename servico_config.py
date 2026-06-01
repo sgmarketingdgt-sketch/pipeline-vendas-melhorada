@@ -225,7 +225,20 @@ def processar_todos_servicos(lead: dict) -> dict:
     """
     todos = get_todos_servicos()
     resultado = {}
-    nicho_lead = (lead.get("segmento") or "").lower()
+    nicho_lead = (lead.get("segmento") or lead.get("nicho_cliente") or "").lower()
+    if not nicho_lead:
+        # Lead sem segmento: aplica apenas o serviço genérico para evitar rapport incorreto
+        servico_gen = todos.get("generico")
+        if servico_gen:
+            return {"generico": {
+                "nome_servico": servico_gen.get("nome", "generico"),
+                "classificacao": "media",
+                "score": 0,
+                "rapport": gerar_rapport(lead, servico_gen),
+                "gancho": gerar_gancho_dor(servico_gen, lead),
+                "mensagem_wa": gerar_mensagem_wa(lead, servico_gen),
+            }}
+        return {}
 
     for sid, cfg in todos.items():
         nicho_alvo = (cfg.get("nicho_alvo") or "").lower()

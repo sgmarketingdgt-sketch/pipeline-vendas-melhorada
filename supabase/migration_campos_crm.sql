@@ -53,3 +53,10 @@ UPDATE leads SET followup_sent  = '{}'::jsonb WHERE followup_sent  IS NULL;
 UPDATE leads SET score_conversacional =
   '{"dor":0,"momento":0,"maturidade":0,"comportamento":0,"anti_curioso":0,"total":0,"temperatura":"frio","sinais":[],"ultima_atualizacao":null}'::jsonb
   WHERE score_conversacional IS NULL;
+
+-- ---------------------------------------------------------------------
+-- Campos de e-mail (sincronizados pelo pipeline)
+-- ---------------------------------------------------------------------
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS email        text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS email_fonte  text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS whois_nome   text;

@@ -37,17 +37,19 @@ Próximo nicho novo: offset **500** (IDs 501–599). Offsets dinâmicos persisti
 
 ```
 .env                        → configuração ativa (SEGMENTO, CIDADE, SERVICO)
-extrator.py                 → fase 1: extrai leads do Google Maps (Places API New)
-merge.py                    → fase 2: deduplica hamburguerias (SP, top 50, filtra DDD 11)
-merge_aviacao.py            → fase 2: deduplica aviação (Brasil, top 50, sem filtro DDD)
-fase_a_cnpj.py              → fase 3: busca CNPJ no site de cada lead
-fase_b_brasilapi.py         → fase 4: enriquece CNPJ via BrasilAPI (razão social, sócios)
-fase_d_wa_validar.py        → fase 5: valida WhatsApp via Evolution API
-fase_e_anuncia_real.py      → fase 6: verifica anúncios Meta + Google Ads via Playwright
-fase_email.py               → fase 7: busca e-mails (RDAP + scraping + CNPJ)
-fase_instagram.py           → fase 8a: busca Instagram local + dono/decisor via Google
-consolidate_v2.py           → fase 8b: monta leads_final.json (multi-nicho, incremental)
-build_html_v2.py            → fase 9: gera index.html com leads embutidos
+extrator.py                 → fase 01: extrai leads do Google Maps (Places API New)
+merge.py                    → fase 02: deduplica nichos locais (SP, top 50, filtra DDD)
+merge_aviacao.py            → fase 02: deduplica aviação (Brasil, top 50, sem filtro DDD)
+fase_a_cnpj.py              → fase 03: busca CNPJ no site de cada lead
+fase_b_brasilapi.py         → fase 04: enriquece CNPJ via BrasilAPI (razão social, sócios)
+fase_d_wa_validar.py        → fase 05: valida WhatsApp via Evolution API
+fase_e_anuncia_real.py      → fase 06: verifica anúncios Meta + Google Ads via Playwright
+fase_email.py               → fase 07: busca e-mails (RDAP + scraping + CNPJ)
+fase_instagram.py           → fase 08: busca Instagram local + dono/decisor via Google
+consolidate_v2.py           → fase 09: monta leads_final.json (multi-nicho, incremental)
+fase_sync_supabase.py       → fase 09a: sync incremental para Supabase (opcional)
+build_html_v2.py            → fase 10: gera index.html com leads embutidos
+                               fase 11: deploy na Vercel (via pipeline.sh)
 template_crm.html           → fonte do CRM (NUNCA editar index.html direto)
 servicos/                   → JSONs de configuração por nicho/serviço
 servico_config.py           → lógica de scoring, rapport, ganchos, mensagens
@@ -365,7 +367,7 @@ Na aba **Visão Geral** do dossier, botão **"Editar dados"** permite corrigir/c
 
 1. **Nunca editar `index.html` diretamente** — editar sempre `template_crm.html` e rodar `build_html_v2.py`
 2. **Nunca apagar os arquivos de cache** (wa_validado, email_validado, etc.)
-3. **Sempre fixar o alias** após deploy: `npx vercel alias set [url].vercel.app invictus-prospect-yonzza.vercel.app`
+3. **O `./pipeline.sh` já faz o alias automaticamente.** Só rode manualmente se aparecer `[aviso] URL do deploy não detectada`: `npx vercel alias set [url].vercel.app invictus-prospect-yonzza.vercel.app`
 4. **Offset de ID por nicho** — cada nicho ocupa 100 IDs. Nunca reutilizar faixas existentes
 5. **merge_aviacao.py** é específico para nichos nacionais (sem filtro de DDD/estado)
 6. **`cloudUpsertLead` com `skipStatus: true`** sempre que a ação é do operador sobre lead N8N (evita race condition)

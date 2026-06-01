@@ -69,19 +69,22 @@ def _salvar_nichos_registrados(d: dict[str, int]) -> None:
 
 def _id_offset(segmento: str) -> int:
     s = (segmento or "").lower()
-    # 1. Tabela fixa
+    s_norm = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    # 1. Tabela fixa (comparação por substring, case insensitive)
     for key, off in SEGMENTO_ID_OFFSET.items():
-        if key in s:
+        key_norm = unicodedata.normalize("NFKD", key).encode("ascii", "ignore").decode("ascii")
+        if key_norm in s_norm:
             return off
-    # 2. Nichos dinâmicos já registrados
+    # 2. Nichos dinâmicos já registrados (comparação normalizada para evitar duplicatas por acento)
     dinamicos = _carregar_nichos_registrados()
     for key, off in dinamicos.items():
-        if key == s:
+        key_norm = unicodedata.normalize("NFKD", key).encode("ascii", "ignore").decode("ascii")
+        if key_norm == s_norm:
             return off
-    # 3. Nicho novo — calcula próximo offset disponível e persiste
+    # 3. Nicho novo — calcula próximo offset disponível e persiste (usando chave normalizada)
     todos_offsets = set(SEGMENTO_ID_OFFSET.values()) | set(dinamicos.values())
     proximo = max(todos_offsets) + 100 if todos_offsets else 300
-    dinamicos[s] = proximo
+    dinamicos[s] = proximo  # persiste com a forma original (com acentos)
     _salvar_nichos_registrados(dinamicos)
     print(f"  [nicho novo] '{segmento}' registrado com offset {proximo} (IDs {proximo+1}–{proximo+99})")
     return proximo
@@ -166,7 +169,17 @@ def consolidar_local() -> tuple[list, dict]:
             calcular_priority_score_servico, gerar_rapport,
             gerar_gancho_dor, classificar_lead, gerar_mensagem_wa,
         )
-        servico_principal = get_servico()  # serviço definido no .env (fallback para rapport/gancho genérico)
+        servico_principal = get_servico()  # serviço definido no .env
+        # Valida divergência entre SERVICO e SEGMENTO para evitar rapport de nicho errado
+        if servico_principal:
+            nicho_alvo_srv = (servico_principal.get("nicho_alvo") or "").lower()
+            if nicho_alvo_srv and nicho_alvo_srv not in ("generico", ""):
+                seg_norm_check = _normalizar_seg(_segmento_env)
+                nicho_norm_check = _normalizar_seg(nicho_alvo_srv)
+                if nicho_norm_check not in seg_norm_check and seg_norm_check not in nicho_norm_check:
+                    print(f"  [AVISO] SERVICO='{servico_principal.get('id')}' tem nicho_alvo='{nicho_alvo_srv}' "
+                          f"mas SEGMENTO='{_segmento_env}' — usando generico para evitar rapport errado")
+                    servico_principal = get_servico("generico")
         multi_servico = True
     except ImportError:
         servico_principal = {}
@@ -184,6 +197,8 @@ def consolidar_local() -> tuple[list, dict]:
     _env = dotenv_values(BASE / ".env") if (BASE / ".env").exists() else {}
     _segmento_env = (_env.get("SEGMENTO") or "Geral").strip().strip('"').strip("'")
     _id_off = _id_offset(_segmento_env)
+    # Inicializa segmento_lead com fallback para evitar NameError quando CSV vazio
+    segmento_lead = _segmento_env
 
     MAX_LEADS = int(os.getenv("MAX_LEADS_POR_RODADA", "50"))
     csv_path = BASE / "leads_merged.csv"
@@ -489,8 +504,9 @@ def consolidar_local() -> tuple[list, dict]:
                     nl["data_entrada"] = datetime.now().strftime("%Y-%m-%d")
 
             # Reatribui IDs dos leads realmente novos para evitar conflito com IDs preservados
+            # range(1, 100): cada nicho tem faixa de 99 IDs — não invadir faixas de outros nichos
             available_ids = [
-                i + _id_off for i in range(1, 200)
+                i + _id_off for i in range(1, 100)
                 if (i + _id_off) not in preserved_ids
             ]
             new_id_cursor = 0
@@ -516,12 +532,11 @@ def consolidar_local() -> tuple[list, dict]:
             print(f"  ✦  {novos_count} leads novos | {repetidos_count} atualizados | {len(leads_sumidos)} mantidos sem reextração")
 
             # ── Preserva outros segmentos com merge de email ──────────────────
+            # email_by_id é indexado por lid sem offset (1-50); outros_seg usa IDs com offset
+            # O email já foi gravado em rodadas anteriores — não há forma de fazer lookup agora
+            # (manter como está: e-mails de outros nichos já estão no JSON existente)
             for l in outros_seg:
-                if not l.get("email") and l["id"] in email_by_id:
-                    em = email_by_id[l["id"]]
-                    l["email"]       = em.get("email")
-                    l["email_fonte"] = em.get("email_fonte")
-                    l["whois_nome"]  = em.get("whois_nome")
+                pass  # e-mails já preservados do leads_final.json existente
             if outros_seg:
                 print(f"  Preservando {len(outros_seg)} leads de outros nichos do leads_final.json")
                 final.extend(outros_seg)
