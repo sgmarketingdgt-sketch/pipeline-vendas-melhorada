@@ -6,16 +6,17 @@ Guia completo e autossuficiente. Sem precisar do Claude.
 
 ## Fluxo para qualquer nicho novo
 
-### Passo 1 — Editar o `.env` (3 linhas)
+### Passo 1 — Editar o `.env`
+
+Abra o arquivo `.env` e mude as 3 linhas marcadas com ⚠️:
 
 ```
-SEGMENTO="Nome do Nicho"
-CIDADE="São Paulo"
-SERVICO=generico
+SEGMENTO="Nome do Nicho"    ← nome exato do nicho (ex: "Blindagem Automotiva")
+CIDADE="São Paulo"           ← cidade alvo
+SERVICO=generico             ← sempre "generico" para nicho novo
 ```
 
-Só isso. O pipeline detecta o nicho automaticamente e usa mensagens genéricas de Google Ads.
-Se quiser mensagens personalizadas para o nicho, troque `SERVICO=generico` pelo ID do serviço específico (ex: `seguranca_trabalho`).
+> Nichos com mensagens personalizadas: use `seguranca_trabalho` ou `trafego_pago_aviacao` no lugar de `generico`.
 
 ---
 
@@ -30,58 +31,41 @@ python3 extrator.py "[SEGMENTO] [CIDADE VIZINHA]"
 # ... 8 a 12 queries no total
 ```
 
-**Meta:** 80–120 resultados brutos em `prospects/`.
+**Meta:** 80–120 resultados brutos em `prospects/`. Se sair menos, rode mais queries.
 
 ---
 
-### Passo 3 — Dedup e filtro
+### Passo 3 — Rodar o pipeline completo (1 comando)
 
-Nicho local (uma cidade):
 ```bash
-python3 merge.py
+./pipeline.sh
 ```
 
-Nicho nacional (ex: aviação):
-```bash
-python3 merge_aviacao.py
+Faz tudo automaticamente: merge → CNPJ → BrasilAPI → WhatsApp → Meta Ads → e-mail → Instagram → consolidação → Supabase → build → deploy.
+
+Aguarda terminar (~30–60 min) e exibe:
+```
+CONCLUÍDO!
+CRM no ar: https://invictus-prospect-yonzza.vercel.app
 ```
 
-**Meta:** 45–50 leads após filtro. Se sair menos, rode mais queries.
+> **Nicho nacional** (ex: aviação): rode antes do pipeline:
+> ```bash
+> python3 merge_aviacao.py
+> ./pipeline.sh
+> ```
 
 ---
 
-### Passo 4 — Enriquecimento
+## Nichos ativos
 
-```bash
-python3 fase_a_cnpj.py
-python3 fase_b_brasilapi.py
-python3 fase_d_wa_validar.py
-python3 fase_e_anuncia_real.py
-python3 fase_email.py
-python3 fase_instagram.py
-```
-
----
-
-### Passo 5 — Consolidar e publicar
-
-```bash
-python3 consolidate_v2.py
-python3 fase_sync_supabase.py
-python3 build_html_v2.py
-npx vercel --prod --yes --force
-npx vercel alias set [url-gerada].vercel.app invictus-prospect-yonzza.vercel.app
-```
-
----
-
-## Nichos ativos (já com mensagens personalizadas)
-
-| Nicho | SEGMENTO | SERVICO |
+| Nicho | SEGMENTO no .env | SERVICO |
 |---|---|---|
 | Hamburguerias SP | `Hamburgueria` | `trafego_pago` |
 | Escolas de Aviação | `Escola de Aviação` | `trafego_pago_aviacao` |
 | Segurança do Trabalho | `Segurança do Trabalho` | `seguranca_trabalho` |
+| Operador de Máquinas | `Operador de Máquinas` | `generico` |
+| Blindagem Automotiva | `Blindagem Automotiva` | `generico` |
 | Qualquer outro nicho | *(qualquer nome)* | `generico` |
 
 ---
@@ -101,6 +85,30 @@ curso trabalho em altura nr35 São Paulo
 treinamento segurança trabalho ABC paulista
 ```
 
+### Operador de Máquinas — SP
+```
+curso operador de máquinas São Paulo
+curso operador de empilhadeira São Paulo
+curso operador de ponte rolante São Paulo
+curso operador de guindaste São Paulo
+curso operador de retroescavadeira São Paulo
+curso NR11 empilhadeira São Paulo
+curso operador de máquinas ABC / Campinas / Guarulhos
+treinamento operador de máquinas pesadas São Paulo
+```
+
+### Blindagem Automotiva — SP
+```
+blindagem automotiva São Paulo
+PPF proteção de pintura São Paulo
+insulfilm premium São Paulo
+envelopamento automotivo São Paulo
+estética automotiva premium São Paulo
+vitrificação automotiva São Paulo
+blindagem veicular São Paulo
+proteção de pintura automotiva São Paulo
+```
+
 ### Escolas de Aviação — Brasil
 ```
 escola de aviação Brasil
@@ -118,17 +126,17 @@ flight school Brasil
 [segmento] [cidade vizinha 1]
 [segmento] [cidade vizinha 2]
 [sinônimo do segmento] [cidade]
-[segmento] bairro [nome do bairro]
 ```
 
 ---
 
 ## Regras importantes
 
-1. **`SEGMENTO` no `.env` deve ser consistente** entre rodadas do mesmo nicho (mesmas letras, mesmo texto)
-2. **Nunca edite `index.html` diretamente** — sempre `template_crm.html` → `build_html_v2.py`
-3. **Nunca apague os arquivos de cache** (`wa_validado.json`, `email_validado.json` etc.)
-4. **Sempre fixe o alias** após o deploy
+1. **Sempre edite o `.env` antes de rodar** — SEGMENTO e CIDADE definem o nicho inteiro
+2. **SEGMENTO deve ser idêntico** entre rodadas do mesmo nicho (letras maiúsculas, acentos — tudo igual)
+3. **Nunca edite `index.html` diretamente** — sempre `template_crm.html` → `build_html_v2.py`
+4. **Nunca apague os arquivos de cache** (`wa_validado.json`, `anuncia_validado.json` etc.) — levam horas para recriar
+5. **`./pipeline.sh` já faz o alias** — não precisa rodar o alias manualmente
 
 ---
 
@@ -136,10 +144,10 @@ flight school Brasil
 
 | Erro | Causa | Solução |
 |---|---|---|
-| `HTTP 400 INVALID_ARGUMENT` | Campo inválido na API Google | Normal — query sem resultado, continue |
-| `Nenhum CSV com segmento X` | `.env` com SEGMENTO diferente do CSV | Corrija o SEGMENTO no `.env` |
-| Lead aparece como "Novo" após nova extração | (corrigido) | Atualizar para versão atual |
-| Score Maps nulo | (corrigido) | Atualizar para versão atual |
+| `HTTP 400 INVALID_ARGUMENT` | Query sem resultado na API | Normal — continue para a próxima query |
+| `Nenhum CSV com segmento X` | SEGMENTO no .env diferente do CSV | Corrija o SEGMENTO no `.env` |
+| CRM mostra 150 após deploy | Alias apontando para deploy antigo | `npx vercel alias set [url-nova].vercel.app invictus-prospect-yonzza.vercel.app` |
+| Lead volta como "Novo" entre rodadas | (corrigido) | Já resolvido na versão atual |
 
 ---
 
