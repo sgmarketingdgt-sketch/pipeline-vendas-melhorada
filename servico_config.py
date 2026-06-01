@@ -168,7 +168,8 @@ def gerar_rapport(lead: dict, servico: dict) -> list[str]:
         s = s.replace("{maps_avaliacoes}", str(lead.get("maps_avaliacoes") or "poucas"))
         s = s.replace("{maps_nota}", str(lead.get("maps_nota") or ""))
         s = s.replace("{nome}", lead.get("nome") or "")
-        s = s.replace("{segmento}", lead.get("nicho_cliente") or "restaurante")
+        s = s.replace("{cidade}", lead.get("cidade") or "")
+        s = s.replace("{segmento}", lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
         result.append(s)
     return result
 
@@ -185,7 +186,7 @@ def gerar_gancho_dor(servico: dict, lead: dict | None = None) -> list[str]:
         s = tpl
         s = s.replace("{dono_primeiro_nome}", dono_primeiro)
         s = s.replace("{nome}",              lead.get("nome") or "")
-        s = s.replace("{segmento}",          lead.get("nicho_cliente") or "escola")
+        s = s.replace("{segmento}",          lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
         s = s.replace("{maps_avaliacoes}",   str(lead.get("maps_avaliacoes") or ""))
         s = s.replace("{maps_nota}",         str(lead.get("maps_nota") or ""))
         s = s.replace("{cidade}",            lead.get("cidade") or "")
@@ -202,7 +203,8 @@ def gerar_mensagem_wa(lead: dict, servico: dict) -> str | None:
     msg = tpl
     msg = msg.replace("{dono_primeiro_nome}", dono_primeiro)
     msg = msg.replace("{nome}", lead.get("nome") or "")
-    msg = msg.replace("{segmento}", lead.get("nicho_cliente") or "restaurante")
+    msg = msg.replace("{cidade}", lead.get("cidade") or "")
+    msg = msg.replace("{segmento}", lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
     msg = msg.replace("{maps_avaliacoes}", str(lead.get("maps_avaliacoes") or ""))
     msg = msg.replace("{maps_nota}", str(lead.get("maps_nota") or ""))
     return msg

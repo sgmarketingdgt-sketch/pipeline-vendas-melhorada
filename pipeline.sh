@@ -17,9 +17,10 @@ echo "=================================================="
 echo "  PIPELINE DE PROSPECÇÃO — Yonzza Digital"
 echo "=================================================="
 
-# Lê o .env para mostrar o contexto atual
-SEGMENTO=$(grep "^SEGMENTO=" .env | cut -d'"' -f2)
-CIDADE=$(grep "^CIDADE=" .env | cut -d'"' -f2)
+# Lê o .env — suporta valores com e sem aspas
+SEGMENTO=$(grep "^SEGMENTO=" .env | sed 's/SEGMENTO=//;s/"//g;s/'"'"'//g' | xargs)
+CIDADE=$(grep "^CIDADE=" .env    | sed 's/CIDADE=//;s/"//g;s/'"'"'//g'    | xargs)
+
 echo ""
 echo -e "  Segmento: ${AMARELO}${SEGMENTO}${RESET}"
 echo -e "  Cidade:   ${AMARELO}${CIDADE}${RESET}"
@@ -27,9 +28,17 @@ echo ""
 echo "  Confirma? (Enter para continuar / Ctrl+C para cancelar)"
 read -r
 
+# Seleciona merge correto: nacional (aviação) vs local (SP)
 echo ""
 echo -e "${VERDE}[Fase 02] Dedup e filtro...${RESET}"
-python3 merge.py
+SEGMENTO_LOWER=$(echo "$SEGMENTO" | tr '[:upper:]' '[:lower:]')
+if echo "$SEGMENTO_LOWER" | grep -qiE "avia|flight|piloto|aeronáutica|aeronautica"; then
+  echo "  → Usando merge_aviacao.py (nicho nacional)"
+  python3 merge_aviacao.py
+else
+  echo "  → Usando merge.py (nicho local SP)"
+  python3 merge.py
+fi
 
 echo ""
 echo -e "${VERDE}[Fase 03] Buscando CNPJs...${RESET}"

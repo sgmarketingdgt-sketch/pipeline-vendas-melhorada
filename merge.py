@@ -147,6 +147,15 @@ def rank_key(row):
 filtrados.sort(key=rank_key)
 selecionados = filtrados[:50]
 
+if not selecionados:
+    print("\n⚠️  Nenhum lead passou o filtro.")
+    print("   Verifique o SEGMENTO no .env e rode mais queries no extrator.")
+    # Apaga CSV antigo para evitar que fases seguintes processem dados de outra rodada
+    if OUT_CSV.exists():
+        OUT_CSV.unlink()
+        print("   leads_merged.csv antigo removido para evitar contaminação.")
+    import sys; sys.exit(1)
+
 if selecionados:
     # União de todas as colunas presentes (CSVs de rodadas diferentes podem ter colunas distintas)
     all_keys = list(dict.fromkeys(k for row in selecionados for k in row.keys()))

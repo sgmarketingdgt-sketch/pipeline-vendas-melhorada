@@ -476,7 +476,7 @@ def consolidar_local() -> tuple[list, dict]:
 
             # Reatribui IDs dos leads realmente novos para evitar conflito com IDs preservados
             available_ids = [
-                i + _id_off for i in range(1, 100)
+                i + _id_off for i in range(1, 200)
                 if (i + _id_off) not in preserved_ids
             ]
             new_id_cursor = 0
@@ -515,19 +515,19 @@ def consolidar_local() -> tuple[list, dict]:
         except Exception as e:
             print(f"  [aviso] Não foi possível ler leads_final.json existente: {e}")
 
-    final.sort(key=lambda x: -x["priority_score"])
+    final.sort(key=lambda x: -(x.get("priority_score") or 0))
 
     stats = {
         "total": len(final),
-        "com_cnpj": sum(1 for l in final if l["cnpj"]),
-        "com_dono": sum(1 for l in final if l["dono"]),
-        "com_socios_cnpj": sum(1 for l in final if l["socios_cnpj"]),
-        "wa_ativo": sum(1 for l in final if l["whatsapp_ativo"]),
-        "com_instagram": sum(1 for l in final if ((l["instagram"] or {}).get("url") or "").startswith("http")),
-        "anuncia_meta_sim": sum(1 for l in final if l["anuncia_meta"] == "sim"),
-        "anuncia_google_sim": sum(1 for l in final if l["anuncia_google"] == "sim"),
-        "com_rapport_3plus": sum(1 for l in final if len(l["rapport_humano"]) >= 3),
-        "com_gancho_dor": sum(1 for l in final if len(l["gancho_dor"]) >= 2),
+        "com_cnpj": sum(1 for l in final if l.get("cnpj")),
+        "com_dono": sum(1 for l in final if l.get("dono")),
+        "com_socios_cnpj": sum(1 for l in final if l.get("socios_cnpj")),
+        "wa_ativo": sum(1 for l in final if l.get("whatsapp_ativo")),
+        "com_instagram": sum(1 for l in final if ((l.get("instagram") or {}).get("url") or "").startswith("http")),
+        "anuncia_meta_sim": sum(1 for l in final if l.get("anuncia_meta") == "sim"),
+        "anuncia_google_sim": sum(1 for l in final if l.get("anuncia_google") == "sim"),
+        "com_rapport_3plus": sum(1 for l in final if len(l.get("rapport_humano") or []) >= 3),
+        "com_gancho_dor": sum(1 for l in final if len(l.get("gancho_dor") or []) >= 2),
     }
     return final, stats
 
