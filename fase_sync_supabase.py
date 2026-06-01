@@ -195,7 +195,7 @@ def indexar_remotos(remotos: list[dict]) -> tuple[dict, dict, dict]:
         cnpj = (r.get("cnpj") or "").strip()
         if cnpj:
             by_cnpj[cnpj] = r
-            continue  # CNPJ é mais forte; não indexa em WA/nome
+        # Indexa WA e nome independente de ter CNPJ (busca de fallback)
         wa = (r.get("whatsapp_numero") or "").strip()
         if wa:
             by_wa[wa] = r
@@ -206,11 +206,12 @@ def indexar_remotos(remotos: list[dict]) -> tuple[dict, dict, dict]:
 
 
 def encontrar_match(lead: dict, by_cnpj: dict, by_wa: dict, by_nome: dict) -> dict | None:
+    # Prioridade: CNPJ > WhatsApp > nome normalizado
     cnpj = (lead.get("cnpj") or "").strip()
     if cnpj and cnpj in by_cnpj:
         return by_cnpj[cnpj]
     wa = (lead.get("whatsapp_numero") or "").strip()
-    if wa and not cnpj and wa in by_wa:
+    if wa and wa in by_wa:
         return by_wa[wa]
     nome_norm = normalizar_nome(lead.get("nome") or "")
     if nome_norm and nome_norm in by_nome:
@@ -271,7 +272,8 @@ def montar_payload_update(lead: dict) -> dict:
     """Atualização diferencial: somente campos voláteis + last_seen_at."""
     payload = {"last_seen_at": datetime.utcnow().isoformat() + "Z"}
     for campo in CAMPOS_VOLATEIS:
-        if campo in lead and lead[campo] is not None:
+        if campo in lead:
+            # Envia None explicitamente para limpar valores obsoletos no Supabase
             payload[campo] = lead[campo]
     # Casts críticos
     if "meta_ads_count" in payload:

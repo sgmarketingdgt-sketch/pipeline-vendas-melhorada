@@ -23,10 +23,13 @@ npx vercel alias set [url-gerada].vercel.app invictus-prospect-yonzza.vercel.app
 
 | Nicho | Segmento no .env | IDs | Serviço |
 |---|---|---|---|
-| Hamburguerias (SP) | `Hamburgueria` | 1–99 | `trafego_pago`, `gmb` |
+| Hamburguerias (SP) | `Hamburgueria` | 1–99 | `trafego_pago` |
 | Escolas de Aviação (Brasil) | `Escola de Aviação` | 101–199 | `trafego_pago_aviacao` |
+| Segurança do Trabalho (SP) | `Segurança do Trabalho` | 201–299 | `seguranca_trabalho` |
+| Blindagem Automotiva (SP) | `Blindagem Automotiva` | 301–399 | `generico` |
+| Operador de Máquinas (SP) | `Operador de Máquinas` | 401–499 | `generico` |
 
-Próximo nicho novo começa no offset **200** (IDs 201–299).
+Próximo nicho novo: offset **500** (IDs 501–599). Offsets dinâmicos persistidos em `nichos_registrados.json`.
 
 ---
 
@@ -176,13 +179,9 @@ npx vercel alias set [url].vercel.app invictus-prospect-yonzza.vercel.app
 
 Usa a **Places API New** (`places.googleapis.com/v1/places:searchText`).
 
-Campos extraídos incluem `places.socialMediaLinks` — permite capturar Instagram e Facebook diretamente do perfil do Google Maps. Exemplo no `place_to_row()`:
-```python
-social = p.get("socialMediaLinks") or []
-instagram_maps = next((s.get("uri","") for s in social if "instagram.com" in s.get("uri","")), "")
-facebook_maps  = next((s.get("uri","") for s in social if "facebook.com"  in s.get("uri","")), "")
-```
 Variável de ambiente necessária: `GOOGLE_PLACES_API_KEY` no `.env`.
+
+> **Nota:** `places.socialMediaLinks` não está disponível no plano atual da API. Os campos `instagram_maps` e `facebook_maps` são sempre gravados como string vazia. O Instagram da empresa é buscado na Fase 08 via `fase_instagram.py`.
 
 ---
 

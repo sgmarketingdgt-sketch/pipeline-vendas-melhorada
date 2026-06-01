@@ -88,18 +88,29 @@ def fetch_places(query, max_results=60):
         if page_token:
             body["pageToken"] = page_token
 
-        resp = requests.post(
-            ENDPOINT,
-            headers={
-                "X-Goog-Api-Key": API_KEY,
-                "X-Goog-FieldMask": FIELD_MASK,
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print(f"[erro] HTTP {resp.status_code}: {resp.text[:300]}")
+        # Retry com backoff para erros transitórios (429 rate limit, 503 instabilidade)
+        resp = None
+        for tentativa in range(3):
+            resp = requests.post(
+                ENDPOINT,
+                headers={
+                    "X-Goog-Api-Key": API_KEY,
+                    "X-Goog-FieldMask": FIELD_MASK,
+                    "Content-Type": "application/json",
+                },
+                json=body,
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                break
+            if resp.status_code in (429, 503) and tentativa < 2:
+                wait = (tentativa + 1) * 5
+                print(f"  [retry] HTTP {resp.status_code} — aguardando {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"[erro] HTTP {resp.status_code}: {resp.text[:300]}")
+                break
+        if resp is None or resp.status_code != 200:
             break
 
         data = resp.json()

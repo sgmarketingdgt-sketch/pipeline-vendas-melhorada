@@ -13,6 +13,11 @@ Diferenças em relação ao merge.py (hamburguerias):
 """
 import csv, glob, os, re, sys, io
 from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -109,7 +114,7 @@ def is_valid(row):
     cat  = (row.get("categoria") or "").lower()
 
     for term in BLACKLIST_TERMS:
-        if term in nome:
+        if term in nome or term in cat:  # verifica nome E categoria
             return False
 
     niche_ok = any(t in nome for t in NICHE_TERMS)
@@ -143,6 +148,14 @@ def rank_key(row):
 
 filtrados.sort(key=rank_key)
 selecionados = filtrados[:50]
+
+if not selecionados:
+    print("\n⚠️  Nenhum lead passou o filtro.")
+    print("   Verifique o SEGMENTO no .env e rode mais queries no extrator.")
+    if OUT_CSV.exists():
+        OUT_CSV.unlink()
+        print("   leads_merged.csv antigo removido para evitar contaminação.")
+    sys.exit(1)
 
 # União de todas as colunas presentes (CSVs de rodadas diferentes podem ter colunas distintas)
 all_keys = list(dict.fromkeys(k for row in selecionados for k in row.keys()))

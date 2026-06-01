@@ -108,16 +108,17 @@ def is_valid(row):
     for term in BLACKLIST_TERMS:
         if term in nome or term in cat:
             return False
+    # Filtro geográfico SP (sempre aplicado, independente do segmento)
     if " SP" not in endereco and "SÃO PAULO" not in endereco and "SAO PAULO" not in endereco:
         return False
     ddd_match = re.search(r"\((\d{2})\)", telefone)
     if ddd_match and ddd_match.group(1) not in SP_DDDS:
         return False
-    # Se o CSV já tem o segmento correto (vem do extrator com SEGMENTO no .env), aceita direto
+    # Filtro de nicho: segmento do CSV bate com .env → aceita
     seg_row = (row.get("segmento") or "").strip().strip('"').strip("'").lower()
-    if SEGMENTO_ENV and (SEGMENTO_ENV in seg_row or seg_row in SEGMENTO_ENV):
+    if SEGMENTO_ENV and seg_row and (SEGMENTO_ENV in seg_row or seg_row in SEGMENTO_ENV):
         return True
-    # Fallback: verifica NICHE_TERMS (para nichos configurados explicitamente)
+    # Fallback: verifica NICHE_TERMS
     niche_ok = any(t in nome for t in NICHE_TERMS)
     cat_ok   = any(t in cat  for t in NICHE_TERMS)
     return niche_ok or cat_ok

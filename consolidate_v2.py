@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -94,6 +95,12 @@ RESULTADO_ALVO_POR_SERVICO: dict[str, str] = {
     "gmb":                  "Dominar busca local no Google Maps",
     "trafego_pago_aviacao": "Captar matrículas via Google Ads",
 }
+
+
+def _normalizar_seg(s: str) -> str:
+    """Normaliza segmento: lowercase + remove acentos para comparação robusta."""
+    s = (s or "").lower().strip()
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
 
 
 def _extrair_angulo(gancho_text: str) -> tuple[str, str]:
@@ -423,9 +430,10 @@ def consolidar_local() -> tuple[list, dict]:
             with OUT.open("r", encoding="utf-8") as fh:
                 existing = json.load(fh).get("leads", [])
 
-            # Separa por segmento
-            mesmo_seg  = [l for l in existing if (l.get("segmento") or "").lower() == segmento_lead.lower()]
-            outros_seg = [l for l in existing if (l.get("segmento") or "").lower() != segmento_lead.lower()]
+            # Separa por segmento (normaliza acentos para evitar duplicação)
+            seg_norm = _normalizar_seg(segmento_lead)
+            mesmo_seg  = [l for l in existing if _normalizar_seg(l.get("segmento") or "") == seg_norm]
+            outros_seg = [l for l in existing if _normalizar_seg(l.get("segmento") or "") != seg_norm]
 
             # ── Preserva status/notas/follow-up dos leads do MESMO segmento ──
             # Monta índice por chave de identificação dos leads EXISTENTES
@@ -564,6 +572,17 @@ def consolidar_supabase() -> tuple[list, dict]:
     if not url or not key or not agencia:
         print("[erro] SUPABASE_URL, chave e AGENCIA são obrigatórios no .env")
         sys.exit(1)
+
+    # Carrega cache de e-mails local (mesmo no modo supabase, enriquece com dados locais)
+    email_by_id: dict = {}
+    email_path = BASE / "email_validado.json"
+    if email_path.exists():
+        try:
+            with email_path.open("r", encoding="utf-8") as fh:
+                for e in json.load(fh):
+                    email_by_id[e["id"]] = e
+        except Exception:
+            pass
 
     headers = {
         "apikey": key,
