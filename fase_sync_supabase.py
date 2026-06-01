@@ -215,7 +215,12 @@ def encontrar_match(lead: dict, by_cnpj: dict, by_wa: dict, by_nome: dict) -> di
         return by_wa[wa]
     nome_norm = normalizar_nome(lead.get("nome") or "")
     if nome_norm and nome_norm in by_nome:
-        return by_nome[nome_norm]
+        candidate = by_nome[nome_norm]
+        # Confirma que é o mesmo nicho para evitar falsos positivos entre nichos
+        seg_lead = (lead.get("segmento") or "").lower()
+        seg_cand = (candidate.get("segmento") or "").lower()
+        if not seg_lead or not seg_cand or seg_lead == seg_cand:
+            return candidate
     return None
 
 
@@ -284,7 +289,7 @@ def montar_payload_update(lead: dict) -> dict:
 
 
 def bulk_insert(cfg: dict, novos: list[dict]) -> int:
-    """Insere em lotes de 100. Retorna quantos foram aceitos."""
+    """Upsert em lotes de 100 (evita duplicatas por external_id+agencia). Retorna quantos foram aceitos."""
     if not novos:
         return 0
     print(f"[info] Inserindo {len(novos)} leads novos...")
@@ -293,7 +298,9 @@ def bulk_insert(cfg: dict, novos: list[dict]) -> int:
     for i in range(0, len(novos), LOTE):
         chunk = novos[i:i + LOTE]
         url = f"{cfg['url']}/rest/v1/leads"
-        resp = requests.post(url, headers=headers_supabase(cfg["key"]), json=chunk, timeout=60)
+        # Usa upsert para evitar duplicatas quando o mesmo lead aparece em duas rodadas
+        headers = {**headers_supabase(cfg["key"]), "Prefer": "resolution=merge-duplicates"}
+        resp = requests.post(url, headers=headers, json=chunk, timeout=60)
         if resp.status_code in (200, 201):
             aceitos += len(chunk)
             print(f"  [ok] lote {i // LOTE + 1}: {len(chunk)} aceitos")
@@ -359,11 +366,8 @@ def main() -> int:
     remotos = buscar_remoto(cfg)
     by_cnpj, by_wa, by_nome = indexar_remotos(remotos)
 
-    cidade_default = None
-    for lead in leads_locais:
-        if lead.get("cidade"):
-            cidade_default = lead["cidade"]
-            break
+    # cidade_default: fallback para leads sem cidade (pega a mais comum do lote)
+    cidade_default = next((l["cidade"] for l in leads_locais if l.get("cidade")), None)
 
     novos: list[dict] = []
     para_atualizar: list[tuple[str, dict]] = []
@@ -376,7 +380,9 @@ def main() -> int:
             lead["novo_nesta_rodada"] = False
             lead["supabase_id"] = match["id"]
         else:
-            payload = montar_payload_insert(lead, cfg["agencia"], cfg["segmento"], cidade_default)
+            # Usa a cidade do próprio lead; fallback para cidade_default se vazia
+            cidade_lead = lead.get("cidade") or cidade_default
+            payload = montar_payload_insert(lead, cfg["agencia"], cfg["segmento"], cidade_lead)
             novos.append(payload)
             lead["novo_nesta_rodada"] = True
 

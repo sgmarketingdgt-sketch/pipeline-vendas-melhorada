@@ -168,7 +168,7 @@ def gerar_rapport(lead: dict, servico: dict) -> list[str]:
         s = s.replace("{maps_avaliacoes}", str(lead.get("maps_avaliacoes") or "poucas"))
         s = s.replace("{maps_nota}", str(lead.get("maps_nota") or ""))
         s = s.replace("{nome}", lead.get("nome") or "")
-        s = s.replace("{cidade}", lead.get("cidade") or "")
+        s = s.replace("{cidade}", lead.get("cidade") or "sua cidade")
         s = s.replace("{segmento}", lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
         result.append(s)
     return result
@@ -189,7 +189,7 @@ def gerar_gancho_dor(servico: dict, lead: dict | None = None) -> list[str]:
         s = s.replace("{segmento}",          lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
         s = s.replace("{maps_avaliacoes}",   str(lead.get("maps_avaliacoes") or ""))
         s = s.replace("{maps_nota}",         str(lead.get("maps_nota") or ""))
-        s = s.replace("{cidade}",            lead.get("cidade") or "")
+        s = s.replace("{cidade}",            lead.get("cidade") or "sua cidade")
         result.append(s)
     return result
 
@@ -203,7 +203,7 @@ def gerar_mensagem_wa(lead: dict, servico: dict) -> str | None:
     msg = tpl
     msg = msg.replace("{dono_primeiro_nome}", dono_primeiro)
     msg = msg.replace("{nome}", lead.get("nome") or "")
-    msg = msg.replace("{cidade}", lead.get("cidade") or "")
+    msg = msg.replace("{cidade}", lead.get("cidade") or "sua cidade")
     msg = msg.replace("{segmento}", lead.get("nicho_cliente") or lead.get("segmento") or "negócio")
     msg = msg.replace("{maps_avaliacoes}", str(lead.get("maps_avaliacoes") or ""))
     msg = msg.replace("{maps_nota}", str(lead.get("maps_nota") or ""))
@@ -231,9 +231,17 @@ def processar_todos_servicos(lead: dict) -> dict:
         nicho_alvo = (cfg.get("nicho_alvo") or "").lower()
 
         # Se o serviço tem nicho_alvo definido, só processa leads do nicho certo
-        if nicho_alvo and nicho_lead:
+        if nicho_alvo and nicho_alvo != "generico" and nicho_lead:
             if nicho_alvo not in nicho_lead and nicho_lead not in nicho_alvo:
                 continue
+        # Serviço genérico só é aplicado quando nenhum serviço específico bate com o nicho
+        if sid == "generico" and any(
+            (c.get("nicho_alvo") or "").lower() and
+            (c.get("nicho_alvo") or "").lower() != "generico" and
+            ((c.get("nicho_alvo") or "").lower() in nicho_lead or nicho_lead in (c.get("nicho_alvo") or "").lower())
+            for s, c in todos.items() if s != "generico"
+        ):
+            continue
 
         score         = calcular_priority_score_servico(lead, cfg)
         classificacao = classificar_lead(lead, cfg)

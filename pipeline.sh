@@ -31,8 +31,9 @@ read -r
 # Seleciona merge correto: nacional (aviação) vs local (SP)
 echo ""
 echo -e "${VERDE}[Fase 02] Dedup e filtro...${RESET}"
-SEGMENTO_LOWER=$(echo "$SEGMENTO" | tr '[:upper:]' '[:lower:]')
-if echo "$SEGMENTO_LOWER" | grep -qiE "avia|flight|piloto|aeronáutica|aeronautica"; then
+# Normaliza sem acentos para comparação robusta em qualquer locale
+SEGMENTO_NORM=$(echo "$SEGMENTO" | iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "$SEGMENTO" | tr '[:upper:]' '[:lower:]')
+if echo "$SEGMENTO_NORM" | grep -qiE "avia|flight|piloto|aeronautica|escola.*voo"; then
   echo "  → Usando merge_aviacao.py (nicho nacional)"
   python3 merge_aviacao.py
 else
@@ -77,13 +78,17 @@ echo -e "${VERDE}[Fase 10] Gerando CRM...${RESET}"
 python3 build_html_v2.py
 
 echo ""
-echo -e "${VERDE}[Fase 10] Publicando na Vercel...${RESET}"
+echo -e "${VERDE}[Fase 11] Publicando na Vercel...${RESET}"
 DEPLOY_OUT=$(npx vercel --prod --yes --force 2>&1)
 echo "$DEPLOY_OUT"
 # Extrai URL do deployment (*.vercel.app que não seja o alias)
 DEPLOY_URL=$(echo "$DEPLOY_OUT" | grep -o 'https://invictus-prospect-yonzza-[a-z0-9]*\.vercel\.app' | head -1)
 if [ -n "$DEPLOY_URL" ]; then
-  npx vercel alias set "${DEPLOY_URL#https://}" invictus-prospect-yonzza.vercel.app 2>/dev/null || true
+  npx vercel alias set "${DEPLOY_URL#https://}" invictus-prospect-yonzza.vercel.app \
+    && echo -e "${VERDE}  Alias atualizado com sucesso${RESET}" \
+    || echo -e "${AMARELO}  [aviso] Alias não atualizado — rode manualmente:${RESET}\n  npx vercel alias set ${DEPLOY_URL#https://} invictus-prospect-yonzza.vercel.app"
+else
+  echo -e "${AMARELO}  [aviso] URL do deploy não detectada — alias não atualizado${RESET}"
 fi
 
 echo ""

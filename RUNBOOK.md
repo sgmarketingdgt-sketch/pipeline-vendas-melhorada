@@ -51,11 +51,7 @@ CONCLUÍDO!
 CRM no ar: https://invictus-prospect-yonzza.vercel.app
 ```
 
-> **Nicho nacional** (ex: aviação): rode antes do pipeline:
-> ```bash
-> python3 merge_aviacao.py
-> ./pipeline.sh
-> ```
+> **Nicho nacional** (ex: aviação): nenhum passo extra necessário — o `./pipeline.sh` detecta automaticamente pelo SEGMENTO e usa `merge_aviacao.py` internamente.
 
 ---
 
@@ -82,14 +78,14 @@ Use a Opção B quando quiser reprocessar só uma fase específica sem rodar tud
 
 ## Nichos ativos
 
-| Nicho | SEGMENTO no .env | SERVICO |
-|---|---|---|
-| Hamburguerias SP | `Hamburgueria` | `trafego_pago` |
-| Escolas de Aviação | `Escola de Aviação` | `trafego_pago_aviacao` |
-| Segurança do Trabalho | `Segurança do Trabalho` | `seguranca_trabalho` |
-| Operador de Máquinas | `Operador de Máquinas` | `generico` |
-| Blindagem Automotiva | `Blindagem Automotiva` | `generico` |
-| Qualquer outro nicho | *(qualquer nome)* | `generico` |
+| Nicho | SEGMENTO no .env | SERVICO | IDs |
+|---|---|---|---|
+| Hamburguerias SP | `Hamburgueria` | `trafego_pago` | 1–99 |
+| Escolas de Aviação | `Escola de Aviação` | `trafego_pago_aviacao` | 101–199 |
+| Segurança do Trabalho | `Segurança do Trabalho` | `seguranca_trabalho` | 201–299 |
+| Blindagem Automotiva | `Blindagem Automotiva` | `generico` | 301–399 |
+| Operador de Máquinas | `Operador de Máquinas` | `generico` | 401–499 |
+| Próximo nicho novo | *(qualquer nome)* | `generico` | 501–599 |
 
 ---
 
@@ -169,8 +165,11 @@ flight school Brasil
 |---|---|---|
 | `HTTP 400 INVALID_ARGUMENT` | Query sem resultado na API | Normal — continue para a próxima query |
 | `Nenhum CSV com segmento X` | SEGMENTO no .env diferente do CSV | Corrija o SEGMENTO no `.env` |
-| CRM mostra 150 após deploy | Alias apontando para deploy antigo | `npx vercel alias set [url-nova].vercel.app invictus-prospect-yonzza.vercel.app` |
+| CRM mostra total antigo após deploy | Alias apontando para deploy antigo | `npx vercel alias set [url-nova].vercel.app invictus-prospect-yonzza.vercel.app` |
 | Lead volta como "Novo" entre rodadas | (corrigido) | Já resolvido na versão atual |
+| Leads duplicados no CRM | merge rodou duas vezes | Apague `leads_merged.csv` e rode apenas `./pipeline.sh` |
+| E-mails de nicho novo não aparecem | (corrigido) | Já resolvido — email_by_id usa ID sem offset |
+| Pipeline para com "nenhum lead passou o filtro" | SEGMENTO no .env não bate com CSVs | Corrija o SEGMENTO e rode as queries de extração novamente |
 
 ---
 

@@ -1777,10 +1777,12 @@
         </div>
       </section>` : '';
 
-    if (ls.status === 'ganhou' || ls.status === 'perdeu') {
+    if (['ganhou', 'perdeu', 'sem_resposta', 'qualificado'].includes(ls.status)) {
+      const label = ls.status === 'ganhou' ? 'ganho' : ls.status === 'perdeu' ? 'perdido'
+        : ls.status === 'sem_resposta' ? 'sem resposta após régua' : 'qualificado';
       return painelControle + `<section class="mb-6">
         <h3 class="font-display text-[11px] uppercase tracking-[0.12em] text-ink-faded mb-3">Régua de Follow-up</h3>
-        <p class="text-[13px] text-ink-dim italic">Lead concluído — follow-up encerrado.</p>
+        <p class="text-[13px] text-ink-dim italic">Lead ${label} — follow-up encerrado.</p>
       </section>`;
     }
     if (ls.status === 'agendado') {
@@ -2674,7 +2676,7 @@
         m.instagram_local_url || (l.instagram && l.instagram.url) || '',
         m.site || '',
         m.email || '',
-        STATUSES.find(st => st.id === s.status)?.label || 'Novo',
+        STATUSES.find(st => st.id === s.status)?.label || N8N_STATUS_LABELS[s.status] || s.status || 'Novo',
         s.loss_reason || '',
         notes,
         activity,
@@ -3343,8 +3345,15 @@
       }
       // Restaura campos de follow-up e perda da nuvem (só se a nuvem tiver valor)
       if (c.followup_start)                state.leads[lid].followup_start = c.followup_start;
-      if (c.followup_sent && Object.keys(c.followup_sent).length > 0)
-                                           state.leads[lid].followup_sent  = { ...(c.followup_sent || {}), ...(state.leads[lid].followup_sent || {}) };
+      if (c.followup_sent && Object.keys(c.followup_sent).length > 0) {
+        // Merge por timestamp: usa o valor mais recente por etapa (evita regressão entre dispositivos)
+        const merged = { ...(c.followup_sent || {}) };
+        const localSent = state.leads[lid].followup_sent || {};
+        Object.keys(localSent).forEach(k => {
+          if (!merged[k] || localSent[k] > merged[k]) merged[k] = localSent[k];
+        });
+        state.leads[lid].followup_sent = merged;
+      }
       if (c.loss_reason)                   state.leads[lid].loss_reason    = c.loss_reason;
       if (c.needs_loss_reason)             state.leads[lid].needs_loss_reason = c.needs_loss_reason;
       // Normaliza status N8N que não têm coluna kanban própria

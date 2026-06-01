@@ -185,13 +185,16 @@ def consolidar_local() -> tuple[list, dict]:
     _segmento_env = (_env.get("SEGMENTO") or "Geral").strip().strip('"').strip("'")
     _id_off = _id_offset(_segmento_env)
 
+    MAX_LEADS = int(os.getenv("MAX_LEADS_POR_RODADA", "50"))
     csv_path = BASE / "leads_merged.csv"
     if csv_path.exists():
         with csv_path.open("r", encoding="utf-8-sig") as fh:
-            for i, row in enumerate(csv.DictReader(fh), 1):
-                if i > 50:
-                    break
-                leads_by_id[i] = row
+            all_rows = list(csv.DictReader(fh))
+        if len(all_rows) > MAX_LEADS:
+            print(f"  [aviso] CSV tem {len(all_rows)} leads — usando apenas os primeiros {MAX_LEADS}. "
+                  f"Defina MAX_LEADS_POR_RODADA no .env para aumentar.")
+        for i, row in enumerate(all_rows[:MAX_LEADS], 1):
+            leads_by_id[i] = row
 
     cnpj_by_id = {}
     cnpj_path = BASE / "cnpj_enriquecidos.json"
@@ -211,6 +214,8 @@ def consolidar_local() -> tuple[list, dict]:
                 with p.open("r", encoding="utf-8") as fh:
                     for item in json.load(fh):
                         v2_by_id[item["id"]] = item
+    else:
+        print(f"  [info] lotes_v2 não carregados para '{_segmento_env}' — normal para nichos sem enriquecimento AI")
 
     wa_by_id = {}
     wa_path = BASE / "wa_validado.json"
@@ -394,9 +399,10 @@ def consolidar_local() -> tuple[list, dict]:
             "anuncia_meta": v2.get("anuncia_meta"),
             "anuncia_google": v2.get("anuncia_google"),
             "meta_ads_count": v2.get("meta_ads_count", 0),
-            "email": email_by_id.get(lid + _id_off, {}).get("email"),
-            "email_fonte": email_by_id.get(lid + _id_off, {}).get("email_fonte"),
-            "whois_nome": email_by_id.get(lid + _id_off, {}).get("whois_nome"),
+            # email_by_id é indexado pelo lid do CSV (1–50), sem offset
+            "email": email_by_id.get(lid, {}).get("email"),
+            "email_fonte": email_by_id.get(lid, {}).get("email_fonte"),
+            "whois_nome": email_by_id.get(lid, {}).get("whois_nome"),
             "proposta_valor": v1.get("proposta_valor"),
             "site_gap": v1.get("site_gap"),
             "rapport_humano": rapport,
