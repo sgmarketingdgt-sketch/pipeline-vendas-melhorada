@@ -35,7 +35,9 @@ python3 extrator.py "[SEGMENTO] [CIDADE VIZINHA]"
 
 ---
 
-### Passo 3 — Rodar o pipeline completo (1 comando)
+### Passo 3 — Rodar o pipeline completo
+
+**Opção A — 1 comando (recomendado)**
 
 ```bash
 ./pipeline.sh
@@ -54,6 +56,27 @@ CRM no ar: https://invictus-prospect-yonzza.vercel.app
 > python3 merge_aviacao.py
 > ./pipeline.sh
 > ```
+
+---
+
+**Opção B — Fases separadas (para debugar ou rodar parcialmente)**
+
+```bash
+python3 merge.py                  # dedup e filtro (usar merge_aviacao.py para nichos nacionais)
+python3 fase_a_cnpj.py            # busca CNPJ nos sites
+python3 fase_b_brasilapi.py       # enriquece via BrasilAPI (razão social, sócios)
+python3 fase_d_wa_validar.py      # valida WhatsApp (requer Evolution API)
+python3 fase_e_anuncia_real.py    # verifica anúncios Meta e Google Ads
+python3 fase_email.py             # busca e-mails (RDAP + scraping + CNPJ)
+python3 fase_instagram.py         # busca Instagram da empresa e do dono
+python3 consolidate_v2.py         # monta leads_final.json
+python3 fase_sync_supabase.py     # sincroniza com Supabase
+python3 build_html_v2.py          # gera index.html
+npx vercel --prod --yes --force   # deploy
+npx vercel alias set [url-gerada].vercel.app invictus-prospect-yonzza.vercel.app
+```
+
+Use a Opção B quando quiser reprocessar só uma fase específica sem rodar tudo do zero.
 
 ---
 
